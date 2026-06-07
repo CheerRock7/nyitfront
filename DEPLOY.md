@@ -1,30 +1,21 @@
-# Deploying to a VPS (Node + PM2 + Nginx, HTTP via IP)
+# Deploying nyitfront to the VPS
 
-This is a static Next.js 16 frontend (no backend, database, or env vars).
-The app runs `next start` bound to `127.0.0.1:3000`; Nginx reverse-proxies
-port 80 to it. Replace `SERVER_IP` with your server's public IP below.
+Target server (Contabo) already runs:
 
-## 1. One-time server setup (run as root)
+- **`nyit-app`** — the live stocking system (PM2, port 3000, + Postgres/MySQL/storage). **Do not touch it.**
+- **Apache2** — serving ports 80/443.
+- Node v20.20.2, PM2 already installed.
 
-```bash
-# System packages
-apt update && apt upgrade -y
-apt install -y git nginx ufw
+This project is currently a **static mockup** (no backend calls). We deploy it as a
+standalone frontend on **port 3001**, reachable at `http://SERVER_IP:3001`.
+No Apache changes, so the stocking system is unaffected.
 
-# Node.js 20 LTS (Next 16 needs Node >= 20.9)
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt install -y nodejs
+> When this stops being a mockup and needs the stocking DB/storage, that's a
+> later step (API routes + env vars + likely a subdomain behind Apache with HTTPS).
 
-# PM2 process manager
-npm install -g pm2
+---
 
-# Firewall: allow SSH + HTTP
-ufw allow OpenSSH
-ufw allow 'Nginx HTTP'
-ufw --force enable
-```
-
-## 2. Get the code and build
+## 1. Get the code and build
 
 ```bash
 mkdir -p /var/www
@@ -36,57 +27,45 @@ npm ci          # clean install from package-lock.json
 npm run build   # produces .next/
 ```
 
-## 3. Start under PM2
+## 2. Start under PM2 (port 3001)
 
 ```bash
 cd /var/www/nyitfront
 pm2 start ecosystem.config.cjs
-pm2 save                       # persist process list
-pm2 startup systemd            # prints a command — run the line it outputs
+pm2 save                       # persist so it survives reboot (alongside nyit-app)
 ```
 
-Verify it's up locally:
+`pm2 startup` is already configured for the existing app, so `pm2 save` is enough.
+
+Verify locally:
 
 ```bash
-curl -I http://127.0.0.1:3000   # expect HTTP/1.1 200 OK
+curl -I http://127.0.0.1:3001   # expect HTTP/1.1 200 OK
 ```
 
-## 4. Nginx reverse proxy
+## 3. Open port 3001 to the internet
 
-Create `/etc/nginx/sites-available/nyitfront`:
-
-```nginx
-server {
-    listen 80;
-    listen [::]:80;
-    server_name _;   # matches any hostname / the bare IP
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-Enable it and reload:
+Check for a host firewall:
 
 ```bash
-ln -sf /etc/nginx/sites-available/nyitfront /etc/nginx/sites-enabled/nyitfront
-rm -f /etc/nginx/sites-enabled/default   # remove the default welcome page
-nginx -t                                 # test config
-systemctl reload nginx
+ufw status        # if "inactive", nothing to do here
 ```
 
-Now visit `http://SERVER_IP` in a browser.
+If ufw is **active**, allow the port:
 
-## 5. Redeploying after code changes
+```bash
+ufw allow 3001/tcp
+```
+
+Also check the **Contabo control panel → Firewall** — if you have an external
+firewall enabled there, add an inbound rule for TCP **3001**. (If it's disabled,
+nothing to do.)
+
+Now visit **`http://SERVER_IP:3001`** in a browser.
+
+---
+
+## Redeploying after code changes
 
 ```bash
 cd /var/www/nyitfront
@@ -99,19 +78,33 @@ pm2 reload nyitfront
 ## Handy PM2 commands
 
 ```bash
-pm2 status            # process state
-pm2 logs nyitfront    # tail logs
+pm2 status               # see nyit-app AND nyitfront
+pm2 logs nyitfront       # tail logs for this app only
 pm2 restart nyitfront
 pm2 stop nyitfront
 ```
 
-## Adding HTTPS later (when you have a domain)
+## Later: clean URL + HTTPS via a subdomain (optional)
 
-Point the domain's A record at `SERVER_IP`, set `server_name your.domain;`
-in the Nginx config, then:
+When ready, point a subdomain (e.g. `shop.yourdomain.com`) at the server and add
+an Apache vhost that reverse-proxies to `127.0.0.1:3001`:
+
+```apache
+<VirtualHost *:80>
+    ServerName shop.yourdomain.com
+    ProxyPreserveHost On
+    ProxyPass / http://127.0.0.1:3001/
+    ProxyPassReverse / http://127.0.0.1:3001/
+</VirtualHost>
+```
 
 ```bash
-apt install -y certbot python3-certbot-nginx
-certbot --nginx -d your.domain
-ufw allow 'Nginx HTTPS'
+a2enmod proxy proxy_http
+a2ensite your-site.conf
+apache2ctl configtest && systemctl reload apache2
+# then HTTPS:
+certbot --apache -d shop.yourdomain.com
 ```
+
+At that point you'd also flip the PM2 config back to `--hostname 127.0.0.1` so the
+app is only reachable through Apache.
