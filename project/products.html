@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สินค้าทั้งหมด — COMPUTER HUB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+.page-head { background: var(--surface); border-bottom: 1px solid var(--line); padding-block: 36px; }
+.crumb { font-family: var(--mono); font-size: 12px; letter-spacing: .06em; color: var(--muted); margin-bottom: 10px; }
+.crumb a:hover { color: var(--accent-ink); }
+.page-head h1 { font-size: clamp(26px, 3.2vw, 36px); font-weight: 600; letter-spacing: -0.02em; margin: 0; }
+.page-head .ph-search { margin-top: 22px; max-width: 560px; }
+.page-head .searchbar { padding: 9px 9px 9px 18px; }
+
+.catalog { padding-block: 36px 80px; }
+.catalog .wrap { display: grid; grid-template-columns: 248px 1fr; gap: 36px; align-items: start; }
+
+.filters { position: sticky; top: 92px; display: flex; flex-direction: column; gap: 24px; }
+.fgroup { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 18px 18px 20px; }
+.fgroup h4 { font-size: 13px; font-weight: 600; letter-spacing: .02em; margin: 0 0 12px; display: flex; justify-content: space-between; align-items: center; }
+.fgroup h4 .clear { font-family: var(--mono); font-size: 11px; color: var(--accent-ink); cursor: pointer; font-weight: 400; }
+.flist { display: flex; flex-direction: column; gap: 3px; max-height: 280px; overflow-y: auto; }
+.frow { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 9px; cursor: pointer; font-size: 14px; color: var(--ink-2); transition: background .14s; }
+.frow:hover { background: var(--bg-2); }
+.frow input { accent-color: var(--accent); width: 16px; height: 16px; }
+.frow.active { color: var(--ink); font-weight: 500; }
+.frow .cnt { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+
+.price-inputs { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.price-inputs input { width: 100%; padding: 9px 10px; border: 1px solid var(--line-2); border-radius: 9px; font-family: var(--mono); font-size: 13px; }
+.price-inputs input:focus { outline: 0; border-color: var(--accent); }
+.range-row { display: flex; gap: 6px; }
+.range-row input[type=range] { width: 100%; accent-color: var(--accent); }
+
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
+.toolbar .count { color: var(--muted); font-size: 14px; }
+.toolbar .count b { color: var(--ink); font-family: var(--mono); }
+.sortsel { display: flex; align-items: center; gap: 8px; }
+.sortsel select { padding: 9px 32px 9px 14px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--surface); font-family: var(--font); font-size: 14px; color: var(--ink); appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23767d8c' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+
+.active-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.achip { display: inline-flex; align-items: center; gap: 7px; background: var(--accent-soft); color: var(--accent-ink); border-radius: 999px; padding: 6px 8px 6px 13px; font-size: 13px; }
+.achip button { background: none; border: 0; color: inherit; display: grid; place-items: center; }
+.achip svg { width: 13px; height: 13px; }
+
+.no-result { text-align: center; padding: 80px 20px; color: var(--muted); grid-column: 1/-1; }
+.no-result h3 { color: var(--ink); margin: 0 0 6px; }
+
+.filter-toggle { display: none; }
+
+@media (max-width: 880px) {
+  .catalog .wrap { grid-template-columns: 1fr; }
+  .filters { position: fixed; top: 0; left: 0; height: 100%; width: 300px; max-width: 86vw; background: var(--bg); z-index: 100; padding: 20px; overflow-y: auto; transform: translateX(-100%); transition: transform .3s var(--ease); box-shadow: var(--shadow-3); }
+  .filters.show { transform: none; }
+  .filter-toggle { display: inline-flex; }
+}
+</style>
+</head>
+<body data-page="products">
+<div id="headerSlot"></div>
+
+<section class="page-head">
+  <div class="wrap">
+    <div class="crumb"><a href="index.html">หน้าแรก</a> / <span id="crumbCat">สินค้าทั้งหมด</span></div>
+    <h1 id="pageTitle">สินค้าทั้งหมด</h1>
+    <div class="ph-search">
+      <div class="searchbar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.2-3.2"></path></svg>
+        <input type="text" id="catSearch" placeholder="ค้นหา การ์ดจอ, CPU, RAM, SSD, Monitor…">
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="catalog">
+  <div class="wrap">
+    <aside class="filters" id="filters">
+      <div class="fgroup">
+        <h4>หมวดหมู่ <span class="clear" data-clear="cat">ล้าง</span></h4>
+        <div class="flist" id="catFilter"></div>
+      </div>
+      <div class="fgroup">
+        <h4>แบรนด์ <span class="clear" data-clear="brand">ล้าง</span></h4>
+        <div class="flist" id="brandFilter"></div>
+      </div>
+      <div class="fgroup">
+        <h4>ช่วงราคา</h4>
+        <div class="price-inputs">
+          <input type="number" id="priceMin" placeholder="ต่ำสุด">
+          <span style="color:var(--faint)">–</span>
+          <input type="number" id="priceMax" placeholder="สูงสุด">
+        </div>
+        <div class="range-row"><input type="range" id="priceRange" min="0" max="50000" step="500" value="50000"></div>
+        <div class="mono" style="font-size:12px;color:var(--muted);margin-top:6px">สูงสุด: <span id="rangeLabel">฿50,000</span></div>
+      </div>
+    </aside>
+
+    <div class="results">
+      <div class="toolbar">
+        <button class="btn btn-ghost btn-sm filter-toggle" id="filterToggle">ตัวกรอง</button>
+        <span class="count"><b id="resCount">0</b> รายการ</span>
+        <div class="sortsel">
+          <span style="font-size:13px;color:var(--muted)">เรียงโดย</span>
+          <select id="sortSel">
+            <option value="featured">แนะนำ</option>
+            <option value="price-asc">ราคา: น้อย → มาก</option>
+            <option value="price-desc">ราคา: มาก → น้อย</option>
+            <option value="rating">คะแนนรีวิว</option>
+            <option value="name">ชื่อ A–Z</option>
+          </select>
+        </div>
+      </div>
+      <div class="active-chips" id="activeChips"></div>
+      <div class="grid grid-4" id="resultGrid"></div>
+    </div>
+  </div>
+</section>
+
+<div id="footerSlot"></div>
+
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(function () {
+  CHUB.init({ page: 'products' });
+
+  const state = { q: '', cats: new Set(), brands: new Set(), min: null, max: null, sort: 'featured' };
+  const params = new URLSearchParams(location.search);
+  if (params.get('q')) { state.q = params.get('q'); }
+  if (params.get('cat')) { state.cats.add(params.get('cat')); }
+
+  const brands = [...new Set(PRODUCTS.map(p => p.brand))].sort();
+
+  // build category filter
+  const cf = document.getElementById('catFilter');
+  CATEGORIES.filter(c => c.id !== 'builder').forEach(c => {
+    const cnt = PRODUCTS.filter(p => p.cat === c.id).length;
+    if (!cnt) return;
+    const row = document.createElement('label');
+    row.className = 'frow'; row.dataset.cat = c.id;
+    row.innerHTML = `<input type="checkbox" ${state.cats.has(c.id) ? 'checked' : ''}><span>${c.name}</span><span class="cnt">${cnt}</span>`;
+    row.querySelector('input').onchange = e => { e.target.checked ? state.cats.add(c.id) : state.cats.delete(c.id); render(); };
+    cf.appendChild(row);
+  });
+  // brands
+  const bf = document.getElementById('brandFilter');
+  brands.forEach(b => {
+    const cnt = PRODUCTS.filter(p => p.brand === b).length;
+    const row = document.createElement('label');
+    row.className = 'frow'; row.dataset.brand = b;
+    row.innerHTML = `<input type="checkbox"><span>${b}</span><span class="cnt">${cnt}</span>`;
+    row.querySelector('input').onchange = e => { e.target.checked ? state.brands.add(b) : state.brands.delete(b); render(); };
+    bf.appendChild(row);
+  });
+
+  // search
+  const cs = document.getElementById('catSearch');
+  cs.value = state.q;
+  cs.addEventListener('input', () => { state.q = cs.value; render(); });
+
+  // price
+  const pmin = document.getElementById('priceMin'), pmax = document.getElementById('priceMax');
+  const range = document.getElementById('priceRange'), rangeLabel = document.getElementById('rangeLabel');
+  pmin.oninput = () => { state.min = pmin.value ? +pmin.value : null; render(); };
+  pmax.oninput = () => { state.max = pmax.value ? +pmax.value : null; render(); };
+  range.oninput = () => { state.max = +range.value; pmax.value = range.value; rangeLabel.textContent = baht(+range.value); render(); };
+
+  document.getElementById('sortSel').onchange = e => { state.sort = e.target.value; render(); };
+  document.querySelectorAll('[data-clear]').forEach(b => b.onclick = () => {
+    const t = b.dataset.clear;
+    if (t === 'cat') { state.cats.clear(); document.querySelectorAll('#catFilter input').forEach(i => i.checked = false); }
+    if (t === 'brand') { state.brands.clear(); document.querySelectorAll('#brandFilter input').forEach(i => i.checked = false); }
+    render();
+  });
+
+  // mobile filter toggle
+  const ft = document.getElementById('filterToggle');
+  ft.onclick = () => document.getElementById('filters').classList.toggle('show');
+
+  function applyFilters() {
+    let list = PRODUCTS.slice();
+    const q = state.q.trim().toLowerCase();
+    if (q) list = list.filter(p => (p.name + ' ' + p.brand + ' ' + (CATMAP[p.cat] ? CATMAP[p.cat].name + ' ' + CATMAP[p.cat].en : '') + ' ' + (p.spec || '')).toLowerCase().includes(q));
+    if (state.cats.size) list = list.filter(p => state.cats.has(p.cat));
+    if (state.brands.size) list = list.filter(p => state.brands.has(p.brand));
+    if (state.min != null) list = list.filter(p => p.price >= state.min);
+    if (state.max != null) list = list.filter(p => p.price <= state.max);
+    switch (state.sort) {
+      case 'price-asc': list.sort((a, b) => a.price - b.price); break;
+      case 'price-desc': list.sort((a, b) => b.price - a.price); break;
+      case 'rating': list.sort((a, b) => (b.rating || 0) - (a.rating || 0)); break;
+      case 'name': list.sort((a, b) => a.name.localeCompare(b.name)); break;
+    }
+    return list;
+  }
+
+  function renderChips() {
+    const wrap = document.getElementById('activeChips');
+    wrap.innerHTML = '';
+    const make = (label, fn) => {
+      const c = document.createElement('span'); c.className = 'achip';
+      c.innerHTML = `<span>${label}</span><button>${ICN.close}</button>`;
+      c.querySelector('button').onclick = () => { fn(); render(); };
+      wrap.appendChild(c);
+    };
+    if (state.q) make('ค้นหา: ' + state.q, () => { state.q = ''; cs.value = ''; });
+    state.cats.forEach(c => make(CATMAP[c].name, () => { state.cats.delete(c); const i = document.querySelector(`#catFilter [data-cat="${c}"] input`); if (i) i.checked = false; }));
+    state.brands.forEach(b => make(b, () => { state.brands.delete(b); const i = document.querySelector(`#brandFilter [data-brand="${b}"] input`); if (i) i.checked = false; }));
+    if (state.min != null) make('≥ ' + baht(state.min), () => { state.min = null; pmin.value = ''; });
+    if (state.max != null && state.max < 50000) make('≤ ' + baht(state.max), () => { state.max = null; pmax.value = ''; range.value = 50000; rangeLabel.textContent = '฿50,000'; });
+  }
+
+  function render() {
+    const list = applyFilters();
+    document.getElementById('resCount').textContent = list.length;
+    renderChips();
+    // title
+    const title = document.getElementById('pageTitle'), crumb = document.getElementById('crumbCat');
+    if (state.cats.size === 1) { const c = CATMAP[[...state.cats][0]]; title.textContent = c.name; crumb.textContent = c.name; }
+    else if (state.q) { title.textContent = 'ผลการค้นหา “' + state.q + '”'; crumb.textContent = 'ค้นหา'; }
+    else { title.textContent = 'สินค้าทั้งหมด'; crumb.textContent = 'สินค้าทั้งหมด'; }
+
+    const grid = document.getElementById('resultGrid');
+    if (!list.length) {
+      grid.className = '';
+      grid.innerHTML = `<div class="no-result"><h3>ไม่พบสินค้าที่ตรงกับเงื่อนไข</h3><p>ลองปรับตัวกรองหรือคำค้นหาใหม่อีกครั้ง</p></div>`;
+      return;
+    }
+    grid.className = 'grid grid-4';
+    CHUB.renderProducts(grid, list);
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

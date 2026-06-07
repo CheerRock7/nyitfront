@@ -1,0 +1,13 @@
+{
+  "name": "frontend-nyit-compter",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite project --host 127.0.0.1",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "devDependencies": {
+    "vite": "^7.2.4"
+  }
+}
