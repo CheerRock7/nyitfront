@@ -105,18 +105,24 @@ Client components can't query the DB directly, so all DB reads happen in `page.t
 | App role | `nyit_web` — **read-only** (SELECT only), used by this website |
 | Images | served by the stocking app (`nyit-app`) on port `3000` at `/uploads/...` |
 
-### Tables (the website only reads the first five)
+### Tables (the website reads `products`, `categories`, `product_serials`, `bundles`, `bundle_items`, `shop_settings`)
 
-`products`, `categories`, `bundles`, `bundle_items`, `shop_settings`,
-plus stocking-only: `sales`, `sale_items`, `stock_movements`, `product_serials`, `users`.
+plus stocking-only: `sales`, `sale_items`, `stock_movements`, `users`.
 
-### `products` columns
+### `products` / `product_serials` columns
 
-`id, category_id, name, sku, brand, model, cost, price, low, warranty_months,
-image_url, notes, status ('active'|'draft'), created_by, created_at, updated_at`
+The stocking system tracks inventory **per physical unit**. `products` is the product
+definition; price/sku/cost/image/warranty live on each serial in `product_serials`.
 
-The site shows `status='active'` products. Mapping: `spec` = `model`, category from the
-`categories.slug` join, image from `image_url`. (`was`/`badge`/`rating` don't exist in the DB.)
+- `products`: `id, category_id, name, brand, model, low, notes,
+  status ('active'|'draft'), created_by, created_at, updated_at`
+- `product_serials`: `id, product_id, serial, status ('in_stock'|'draft'|...), sale_id,
+  sku, cost, price, warranty_months, note, image_url, created_at`
+
+The site shows `status='active'` products **that have at least one `in_stock` serial**
+(sold-out products are hidden). Per product: `price` = lowest in-stock serial price,
+`image` = an in-stock serial's `image_url`, `spec` = `model`, category from the
+`categories.slug` join. (`was`/`badge`/`rating` don't exist in the DB.)
 
 ### Categories (slug)
 

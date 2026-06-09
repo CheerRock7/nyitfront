@@ -10,4 +10,5 @@ CREATE ROLE nyit_web WITH LOGIN PASSWORD 'CHANGE_ME_STRONG_PASSWORD';
 
 GRANT CONNECT ON DATABASE nyit TO nyit_web;
 GRANT USAGE ON SCHEMA public TO nyit_web;
-GRANT SELECT ON products, categories, bundles, bundle_items, shop_settings TO nyit_web;
+-- product_serials carries per-unit price/image/stock the storefront reads.
+GRANT SELECT ON products, categories, product_serials, bundles, bundle_items, shop_settings TO nyit_web;
