@@ -28,6 +28,7 @@ const iconMap: Record<string, LucideIcon> = {
   cool: Fan,
   gear: Keyboard,
   monitor: Monitor,
+  peripheral: Keyboard,
 };
 
 export function CategoryIcon({ name, className = "h-6 w-6" }: { name: string; className?: string }) {

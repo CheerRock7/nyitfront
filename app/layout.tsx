@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans_Thai } from "next/font/google";
 import "./globals.css";
 import { SiteChrome } from "@/components/site-chrome";
+import { getCategories } from "@/lib/products";
+import type { Category } from "@/lib/data";
 
 const ibmThai = IBM_Plex_Sans_Thai({
   subsets: ["thai", "latin"],
@@ -20,15 +22,24 @@ export const metadata: Metadata = {
   description: "ร้านคอมพิวเตอร์ออนไลน์ จัดสเปกคอมและอุปกรณ์ครบ",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Footer category links. Degrade gracefully so the chrome never crashes the
+  // whole site if the database is briefly unreachable.
+  let categories: Category[] = [];
+  try {
+    categories = await getCategories();
+  } catch {
+    categories = [];
+  }
+
   return (
     <html lang="th">
       <body className={`${ibmThai.variable} ${ibmMono.variable}`}>
-        <SiteChrome>{children}</SiteChrome>
+        <SiteChrome categories={categories}>{children}</SiteChrome>
       </body>
     </html>
   );

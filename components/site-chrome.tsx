@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Menu, Search, ShoppingCart, User, X } from "lucide-react";
-import { baht, categories, productMap, type Product } from "@/lib/data";
+import { baht, type Category, type Product } from "@/lib/data";
 import { CategoryIcon } from "@/components/icons";
 
 type CartLine = Product & { quantity: number };
@@ -33,26 +33,33 @@ const nav = [
   { href: "/#contact", label: "ติดต่อเรา" },
 ];
 
-export function SiteChrome({ children }: { children: ReactNode }) {
+export function SiteChrome({ children, categories }: { children: ReactNode; categories: Category[] }) {
   const pathname = usePathname();
   const router = useRouter();
   const [cart, setCart] = useState<Record<string, number>>({});
-  const [cartProducts, setCartProducts] = useState<Record<string, Product>>(productMap);
+  const [cartProducts, setCartProducts] = useState<Record<string, Product>>({});
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
 
+  // Rehydrate the cart (quantities + product details) from localStorage on mount.
   useEffect(() => {
     try {
       setCart(JSON.parse(localStorage.getItem("chub_cart_v2") || "{}"));
+      setCartProducts(JSON.parse(localStorage.getItem("chub_cart_products_v1") || "{}"));
     } catch {
       setCart({});
+      setCartProducts({});
     }
   }, []);
 
   useEffect(() => {
     localStorage.setItem("chub_cart_v2", JSON.stringify(cart));
   }, [cart]);
+
+  useEffect(() => {
+    localStorage.setItem("chub_cart_products_v1", JSON.stringify(cartProducts));
+  }, [cartProducts]);
 
   const lines = useMemo(
     () =>
@@ -160,7 +167,7 @@ export function SiteChrome({ children }: { children: ReactNode }) {
               </p>
             </div>
             <FooterList title="เมนู" items={nav.map((item) => item.label)} />
-            <FooterList title="หมวดหมู่" items={categories.slice(1, 7).map((item) => item.name)} />
+            <FooterList title="หมวดหมู่" items={categories.slice(0, 6).map((item) => item.name)} />
             <FooterList title="ติดต่อเรา" items={["02-XXX-XXXX", "Line: @computerhub", "support@computerhub.co.th", "กรุงเทพมหานคร"]} />
           </div>
           <div className="mono mt-10 border-t border-white/10 pt-6 text-xs text-slate-500">© 2026 COMPUTER HUB</div>

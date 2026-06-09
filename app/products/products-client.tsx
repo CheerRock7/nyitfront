@@ -4,10 +4,10 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { SlidersHorizontal, X } from "lucide-react";
-import { baht, categories, categoryMap, products } from "@/lib/data";
+import { baht, type Category, type Product } from "@/lib/data";
 import { ProductCard } from "@/components/product-card";
 
-export function ProductsClient() {
+export function ProductsClient({ products, categories }: { products: Product[]; categories: Category[] }) {
   const params = useSearchParams();
   const [q, setQ] = useState(params.get("q") || "");
   const [cats, setCats] = useState<Set<string>>(new Set(params.get("cat") ? [params.get("cat") as string] : []));
@@ -15,7 +15,8 @@ export function ProductsClient() {
   const [max, setMax] = useState(50000);
   const [sort, setSort] = useState("featured");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const brandList = useMemo(() => [...new Set(products.map((product) => product.brand))].sort(), []);
+  const categoryMap = useMemo(() => Object.fromEntries(categories.map((category) => [category.id, category])), [categories]);
+  const brandList = useMemo(() => [...new Set(products.map((product) => product.brand))].filter(Boolean).sort(), [products]);
 
   const list = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -28,7 +29,7 @@ export function ProductsClient() {
     if (sort === "rating") filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     if (sort === "name") filtered.sort((a, b) => a.name.localeCompare(b.name));
     return filtered;
-  }, [brands, cats, max, q, sort]);
+  }, [brands, cats, max, q, sort, products, categoryMap]);
 
   const toggle = (set: Set<string>, value: string, setter: (next: Set<string>) => void) => {
     const next = new Set(set);

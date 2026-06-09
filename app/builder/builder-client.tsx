@@ -3,11 +3,11 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Check, RotateCcw, ShoppingCart, Zap } from "lucide-react";
-import { baht, budgets, buildParts, buildSlots, type Product } from "@/lib/data";
+import { baht, budgets, buildSlots, type Product } from "@/lib/data";
 import { CategoryIcon } from "@/components/icons";
 import { useCart } from "@/components/site-chrome";
 
-export function BuilderClient() {
+export function BuilderClient({ buildParts }: { buildParts: Record<string, Product[]> }) {
   const params = useSearchParams();
   const [budgetId, setBudgetId] = useState(params.get("budget") || "");
   const [openSlot, setOpenSlot] = useState<string | null>(null);

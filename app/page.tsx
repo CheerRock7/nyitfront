@@ -1,10 +1,17 @@
 import Link from "next/link";
 import { ArrowRight, MessageCircle, Search, ShieldCheck, Truck, Wrench, Zap } from "lucide-react";
-import { budgets, categories, products } from "@/lib/data";
+import { budgets, builderCategory } from "@/lib/data";
+import { getCategories, getProducts } from "@/lib/products";
 import { CategoryIcon } from "@/components/icons";
 import { ProductCard } from "@/components/product-card";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const [categories, products] = await Promise.all([getCategories(), getProducts()]);
+  const navCategories = [builderCategory, ...categories];
+  const featured = products.slice(0, 8);
+
   return (
     <main>
       <section className="relative overflow-hidden py-20 lg:py-24">
@@ -101,7 +108,7 @@ export default function HomePage() {
         <div className="wrap">
           <SectionHead eyebrow="หมวดหมู่สินค้า" title="เลือกช้อปตามหมวดหมู่" href="/products" />
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-            {categories.map((category) => (
+            {navCategories.map((category) => (
               <Link key={category.id} href={category.id === "builder" ? "/builder" : `/products?cat=${category.id}`} className={`group rounded-[18px] border p-5 text-center transition hover:-translate-y-1 hover:shadow-xl ${category.feature ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white"}`}>
                 <div className={`mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl ${category.feature ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-950 group-hover:bg-blue-600 group-hover:text-white"}`}>
                   <CategoryIcon name={category.icon} />
@@ -118,7 +125,7 @@ export default function HomePage() {
         <div className="wrap">
           <SectionHead eyebrow="คัดมาเพื่อคุณ" title="สินค้าแนะนำ" href="/products" />
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {products.slice(0, 8).map((product) => (
+            {featured.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
