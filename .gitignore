@@ -36,3 +36,6 @@ coverage/
 # Local handoff source material
 project/
 chats/
+
+# Private collaborator handoff (contains real credentials — never push, repo is public)
+AGENTS.md
