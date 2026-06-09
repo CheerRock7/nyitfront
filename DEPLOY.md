@@ -6,12 +6,46 @@ Target server (Contabo) already runs:
 - **Apache2** — serving ports 80/443.
 - Node v20.20.2, PM2 already installed.
 
-This project is currently a **static mockup** (no backend calls). We deploy it as a
-standalone frontend on **port 3001**, reachable at `http://SERVER_IP:3001`.
-No Apache changes, so the stocking system is unaffected.
+This project reads its catalog **live** from the `nyit` stocking-system Postgres
+database (read-only). We deploy it as a standalone frontend on **port 3001**,
+reachable at `http://SERVER_IP:3001`. No Apache changes, so the stocking system is
+unaffected.
 
-> When this stops being a mockup and needs the stocking DB/storage, that's a
-> later step (API routes + env vars + likely a subdomain behind Apache with HTTPS).
+---
+
+## 0. Database setup (one-time)
+
+The website connects to Postgres with a dedicated **read-only** role and never writes.
+
+```bash
+# 1. Create the read-only role (edit the password inside the file first):
+sudo -u postgres psql -d nyit -f db/create-web-role.sql
+
+# 2. (Optional) seed ~10 sample products so the site isn't near-empty:
+sudo -u postgres psql -d nyit -f db/seed-products.sql
+#    Undo later with:
+#    sudo -u postgres psql -d nyit -c "DELETE FROM products WHERE notes = 'seed:web-demo';"
+```
+
+Then create `.env.local` in the project root (copy from `.env.example`):
+
+```bash
+cp .env.example .env.local
+# Edit .env.local:
+#   DATABASE_URL=postgres://nyit_web:THE_PASSWORD@localhost:5432/nyit
+#   NEXT_PUBLIC_UPLOADS_BASE_URL=http://SERVER_IP:3000   # where /uploads images are served
+```
+
+### Local development (from your PC)
+
+The DB only listens on the VPS's localhost, so tunnel to it, then point at the tunnel:
+
+```bash
+ssh -L 5433:localhost:5432 root@194.233.88.142     # keep this open
+# .env.local on your PC:
+#   DATABASE_URL=postgres://nyit_web:THE_PASSWORD@localhost:5433/nyit
+npm run dev
+```
 
 ---
 
@@ -24,6 +58,7 @@ git clone https://github.com/CheerRock7/nyitfront.git
 cd nyitfront
 
 npm ci          # clean install from package-lock.json
+# create .env.local first (see section 0), then:
 npm run build   # produces .next/
 ```
 

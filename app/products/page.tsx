@@ -1,10 +1,14 @@
 import { Suspense } from "react";
 import { ProductsClient } from "@/app/products/products-client";
+import { getCategories, getProducts } from "@/lib/products";
 
-export default function ProductsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ProductsPage() {
+  const [products, categories] = await Promise.all([getProducts(), getCategories()]);
   return (
     <Suspense>
-      <ProductsClient />
+      <ProductsClient products={products} categories={categories} />
     </Suspense>
   );
 }
