@@ -57,7 +57,8 @@ cd /var/www
 git clone https://github.com/CheerRock7/nyitfront.git
 cd nyitfront
 
-npm ci          # clean install from package-lock.json
+npm install     # install deps (npm ci is stricter and can reject a
+                # cross-platform lock file — use npm install on the VPS)
 # create .env.local first (see section 0), then:
 npm run build   # produces .next/
 ```
@@ -105,7 +106,7 @@ Now visit **`http://SERVER_IP:3001`** in a browser.
 ```bash
 cd /var/www/nyitfront
 git pull
-npm ci
+npm install        # use npm install, not npm ci (see note in section 1)
 npm run build
 pm2 reload nyitfront
 ```
