@@ -24,6 +24,7 @@ type ProductRow = {
   price: string;
   model: string | null;
   notes: string | null;
+  description: string | null;
   image_url: string | null;
 };
 
@@ -39,6 +40,7 @@ function toProduct(row: ProductRow): Product {
     brand: row.brand ?? "",
     price: Number(row.price),
     spec: row.model || row.notes || "",
+    description: row.description ?? undefined,
     glyph: meta?.icon ?? slug ?? "set",
     image: imageUrl(row.image_url),
   };
@@ -68,7 +70,7 @@ export async function getProducts(): Promise<Product[]> {
   // price/image_url.
   const rows = await query<ProductRow>(
     `SELECT p.id, p.name, c.slug AS cat, c.name AS cat_name,
-            p.brand, p.model, p.notes, s.price, s.image_url
+            p.brand, p.model, p.notes, p.description, s.price, s.image_url
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        JOIN LATERAL (
@@ -88,7 +90,7 @@ export async function getProducts(): Promise<Product[]> {
 export async function getProductById(id: string): Promise<Product | null> {
   const rows = await query<ProductRow>(
     `SELECT p.id, p.name, c.slug AS cat, c.name AS cat_name,
-            p.brand, p.model, p.notes, s.price, s.image_url
+            p.brand, p.model, p.notes, p.description, s.price, s.image_url
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        JOIN LATERAL (

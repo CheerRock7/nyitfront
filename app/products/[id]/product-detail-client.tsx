@@ -39,6 +39,7 @@ export function ProductDetailClient({ product, related }: { product: Product; re
             <div className="mono text-xs uppercase tracking-[.18em] text-blue-700">{product.catName ?? product.catEn ?? "NYIT Product"}</div>
             <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-tight text-slate-950">{product.name}</h1>
             {product.spec ? <p className="mt-4 leading-7 text-slate-600">{product.spec}</p> : null}
+            {product.description ? <p className="mt-3 leading-7 text-slate-600">{product.description}</p> : null}
 
             <div className="mt-6 rounded-2xl bg-slate-50 p-5">
               <div className="text-sm text-slate-500">ราคา</div>

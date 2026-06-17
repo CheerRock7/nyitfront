@@ -22,6 +22,7 @@ export type Product = {
   was?: number;
   badge?: "sale" | "hot" | "new" | "";
   spec: string;
+  description?: string; // AI-generated or manually entered product detail
   glyph: string;
   image?: string; // absolute image URL when available
   rating?: number;
