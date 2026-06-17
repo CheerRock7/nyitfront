@@ -12,7 +12,7 @@ export function ProductsClient({ products, categories }: { products: Product[]; 
   const [q, setQ] = useState(params.get("q") || "");
   const [cats, setCats] = useState<Set<string>>(new Set(params.get("cat") ? [params.get("cat") as string] : []));
   const [brands, setBrands] = useState<Set<string>>(new Set());
-  const [max, setMax] = useState(50000);
+  const [max, setMax] = useState(200000);
   const [sort, setSort] = useState("featured");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const categoryMap = useMemo(() => Object.fromEntries(categories.map((category) => [category.id, category])), [categories]);
@@ -55,7 +55,7 @@ export function ProductsClient({ products, categories }: { products: Product[]; 
           <FilterGroup title="แบรนด์" items={brandList.map((brand) => ({ id: brand, label: brand, count: products.filter((product) => product.brand === brand).length }))} selected={brands} onToggle={(id) => toggle(brands, id, setBrands)} />
           <div className="mt-5 rounded-[18px] border border-slate-200 bg-white p-5">
             <h3 className="mb-3 text-sm font-semibold">ช่วงราคา</h3>
-            <input type="range" min={1000} max={50000} step={500} value={max} onChange={(event) => setMax(Number(event.target.value))} className="w-full accent-blue-600" />
+            <input type="range" min={0} max={200000} step={500} value={max} onChange={(event) => setMax(Number(event.target.value))} className="w-full accent-blue-600" />
             <div className="mono mt-2 text-xs text-slate-500">สูงสุด: {baht(max)}</div>
           </div>
         </aside>
