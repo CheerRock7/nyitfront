@@ -40,6 +40,20 @@ export function ProductDetailClient({ product, related }: { product: Product; re
             <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-tight text-slate-950">{product.name}</h1>
             {product.spec ? <p className="mt-4 leading-7 text-slate-600">{product.spec}</p> : null}
             {product.description ? <p className="mt-3 leading-7 text-slate-600">{product.description}</p> : null}
+            {product.specs && product.specs.length > 0 ? (
+              <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
+                <table className="w-full text-sm">
+                  <tbody>
+                    {product.specs.map(([key, value], i) => (
+                      <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                        <td className="w-[42%] px-4 py-2 font-medium text-slate-500">{key}</td>
+                        <td className="px-4 py-2 text-slate-800">{value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
 
             <div className="mt-6 rounded-2xl bg-slate-50 p-5">
               <div className="text-sm text-slate-500">ราคา</div>
