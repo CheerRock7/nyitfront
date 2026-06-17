@@ -9,7 +9,7 @@ import { CategoryIcon } from "@/components/icons";
 import { AuthForm } from "@/components/auth-form";
 
 type CartLine = Product & { quantity: number };
-type AuthUser = { name: string; email: string; phone?: string; address?: string };
+type AuthUser = { name: string; email: string; username?: string; phone?: string; address?: string };
 type StoredAccount = AuthUser & { password: string };
 type AuthProfileInput = AuthUser & { password?: string };
 type FooterItem = { label: string; href?: string; external?: boolean };
@@ -51,14 +51,31 @@ const nav = [
   { href: "/#contact", label: "ติดต่อเรา" },
 ];
 
-const defaultAccounts: StoredAccount[] = [{ name: "Admin", email: "admin", password: "nyit1234" }];
+const defaultAccounts: StoredAccount[] = [
+  { name: "Admin", username: "admin", email: "admin", password: "nyit1234" },
+  { name: "User", username: "user", email: "user", password: "nyit1234" },
+];
+
+function normalizeIdentifier(value?: string) {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function accountIdentifiers(account: Pick<StoredAccount, "email" | "name" | "username">) {
+  return [account.email, account.username, account.name].map(normalizeIdentifier).filter(Boolean);
+}
+
+function sameAccount(account: StoredAccount, user: AuthUser) {
+  const current = new Set([user.email, user.username, user.name].map(normalizeIdentifier).filter(Boolean));
+  return accountIdentifiers(account).some((id) => current.has(id));
+}
 
 function readAccounts(): StoredAccount[] {
   try {
     const accounts = JSON.parse(localStorage.getItem("nyit_auth_accounts_v1") || "[]") as StoredAccount[];
     const merged = [...accounts];
     for (const account of defaultAccounts) {
-      const index = merged.findIndex((item) => item.email === account.email);
+      const defaultIds = accountIdentifiers(account);
+      const index = merged.findIndex((item) => accountIdentifiers(item).some((id) => defaultIds.includes(id)));
       if (index < 0) merged.push(account);
     }
     localStorage.setItem("nyit_auth_accounts_v1", JSON.stringify(merged));
@@ -137,23 +154,28 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
 
   const authValue: AuthContextValue = {
     user,
-    login(email, password) {
-      const normalizedEmail = email.trim().toLowerCase();
+    login(identifier, password) {
+      const normalizedIdentifier = normalizeIdentifier(identifier);
       const accounts = readAccounts();
-      const account = accounts.find((item) => item.email === normalizedEmail && item.password === password);
+      const account =
+        accounts.find((item) => item.password === password && accountIdentifiers(item).includes(normalizedIdentifier)) ??
+        defaultAccounts.find((item) => item.password === password && accountIdentifiers(item).includes(normalizedIdentifier));
       if (!account) return false;
-      const nextUser = { name: account.name, email: account.email, phone: account.phone, address: account.address };
+      const nextUser = { name: account.name, email: account.email, username: account.username, phone: account.phone, address: account.address };
       setUser(nextUser);
       localStorage.setItem("nyit_auth_user_v1", JSON.stringify(nextUser));
       return true;
     },
-    register(name, email, password) {
-      const normalizedEmail = email.trim().toLowerCase();
+    register(name, identifier, password) {
+      const displayName = name.trim();
+      const normalizedIdentifier = normalizeIdentifier(identifier);
+      const username = normalizedIdentifier.includes("@") ? normalizeIdentifier(displayName) : normalizedIdentifier;
       const accounts = readAccounts();
-      if (accounts.some((item) => item.email === normalizedEmail)) return false;
-      const nextAccount: StoredAccount = { name: name.trim(), email: normalizedEmail, password };
+      const requestedIds = [normalizedIdentifier, username, normalizeIdentifier(displayName)].filter(Boolean);
+      if (accounts.some((item) => accountIdentifiers(item).some((id) => requestedIds.includes(id)))) return false;
+      const nextAccount: StoredAccount = { name: displayName, username, email: normalizedIdentifier, password };
       const nextAccounts: StoredAccount[] = [...accounts, nextAccount];
-      const nextUser = { name: nextAccount.name, email: nextAccount.email };
+      const nextUser = { name: nextAccount.name, email: nextAccount.email, username: nextAccount.username };
       localStorage.setItem("nyit_auth_accounts_v1", JSON.stringify(nextAccounts));
       localStorage.setItem("nyit_auth_user_v1", JSON.stringify(nextUser));
       setUser(nextUser);
@@ -163,26 +185,28 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
       if (!user) return { ok: false, error: "กรุณาเข้าสู่ระบบก่อนแก้ไขข้อมูล" };
 
       const name = profile.name.trim();
-      const email = profile.email.trim().toLowerCase();
+      const email = normalizeIdentifier(profile.email);
       if (!name || !email) return { ok: false, error: "กรุณากรอกชื่อและ ID/อีเมล" };
 
       const accounts = readAccounts();
-      if (accounts.some((account) => account.email === email && account.email !== user.email)) {
+      const requestedIds = [email, normalizeIdentifier(name), normalizeIdentifier(profile.username)].filter(Boolean);
+      if (accounts.some((account) => !sameAccount(account, user) && accountIdentifiers(account).some((id) => requestedIds.includes(id)))) {
         return { ok: false, error: "ID/อีเมลนี้ถูกใช้แล้ว" };
       }
 
-      const existing = accounts.find((account) => account.email === user.email);
+      const existing = accounts.find((account) => sameAccount(account, user));
       const nextAccount: StoredAccount = {
         name,
         email,
+        username: normalizeIdentifier(profile.username) || existing?.username || (email.includes("@") ? normalizeIdentifier(name) : email),
         phone: profile.phone?.trim(),
         address: profile.address?.trim(),
         password: profile.password?.trim() || existing?.password || "",
       };
-      const nextAccounts = accounts.some((account) => account.email === user.email)
-        ? accounts.map((account) => (account.email === user.email ? nextAccount : account))
+      const nextAccounts = accounts.some((account) => sameAccount(account, user))
+        ? accounts.map((account) => (sameAccount(account, user) ? nextAccount : account))
         : [...accounts, nextAccount];
-      const nextUser: AuthUser = { name: nextAccount.name, email: nextAccount.email, phone: nextAccount.phone, address: nextAccount.address };
+      const nextUser: AuthUser = { name: nextAccount.name, email: nextAccount.email, username: nextAccount.username, phone: nextAccount.phone, address: nextAccount.address };
 
       localStorage.setItem("nyit_auth_accounts_v1", JSON.stringify(nextAccounts));
       localStorage.setItem("nyit_auth_user_v1", JSON.stringify(nextUser));

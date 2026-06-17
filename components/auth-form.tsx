@@ -28,13 +28,13 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
     if (isRegister) {
       const ok = register(name, email, password);
       if (!ok) {
-        setError("อีเมลนี้ถูกใช้แล้ว");
+        setError("ชื่อผู้ใช้งานหรืออีเมลนี้ถูกใช้แล้ว");
         return;
       }
     } else {
       const ok = login(email, password);
       if (!ok) {
-        setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+        setError("ชื่อผู้ใช้งาน/อีเมลหรือรหัสผ่านไม่ถูกต้อง");
         return;
       }
     }
@@ -66,6 +66,7 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
               <UserRound className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
               <input
                 required
+                name="name"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 className="h-12 w-full rounded-xl border border-slate-300 pl-12 pr-4 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
@@ -76,16 +77,17 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
         ) : null}
 
         <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-slate-700">{isRegister ? "อีเมล" : "ID หรืออีเมล"}</span>
+          <span className="mb-1.5 block text-sm font-medium text-slate-700">ชื่อผู้ใช้งาน หรืออีเมล</span>
           <span className="relative block">
             <Mail className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
             <input
               required
-              type={isRegister ? "email" : "text"}
+              name="identifier"
+              type="text"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className="h-12 w-full rounded-xl border border-slate-300 pl-12 pr-4 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
-              placeholder={isRegister ? "you@example.com" : "admin หรือ you@example.com"}
+              placeholder={isRegister ? "username หรือ you@example.com" : "Admin, user หรือ you@example.com"}
             />
           </span>
         </label>
@@ -96,6 +98,7 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
             <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
             <input
               required
+              name="password"
               minLength={6}
               type="password"
               value={password}
@@ -109,7 +112,7 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
 
       {error ? <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
 
-      <button className="mt-6 h-12 w-full rounded-full bg-blue-600 font-medium text-white shadow-lg shadow-blue-600/20">
+      <button type="submit" className="mt-6 h-12 w-full rounded-full bg-blue-600 font-medium text-white shadow-lg shadow-blue-600/20">
         {isRegister ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
       </button>
 

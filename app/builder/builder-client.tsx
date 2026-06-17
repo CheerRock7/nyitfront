@@ -76,9 +76,12 @@ export function BuilderClient({ buildParts }: { buildParts: Record<string, Produ
                     <div className="mono text-xs text-slate-400">{slot.required ? "จำเป็น" : "ไม่บังคับ"}</div>
                   </div>
                   {selected ? (
-                    <div className="hidden text-right sm:block">
-                      <div className="max-w-[220px] truncate text-sm font-medium">{selected.name}</div>
-                      <div className="mono text-sm text-slate-500">{baht(selected.price)}</div>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <ProductThumb product={selected} size="md" />
+                      <div className="hidden min-w-0 text-right sm:block">
+                        <div className="max-w-[220px] truncate text-sm font-medium">{selected.name}</div>
+                        <div className="mono text-sm text-slate-500">{baht(selected.price)}</div>
+                      </div>
                     </div>
                   ) : null}
                   <button onClick={() => setOpenSlot(openSlot === slot.key ? null : slot.key)} className="rounded-xl bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700">
@@ -91,11 +94,9 @@ export function BuilderClient({ buildParts }: { buildParts: Record<string, Produ
                       <button
                         key={part.id}
                         onClick={() => choosePart(slot.key, part)}
-                        className={`grid grid-cols-[52px_1fr_auto] items-center gap-3 rounded-2xl border bg-white p-3 text-left transition hover:border-blue-600 ${selected?.id === part.id ? "border-blue-600 ring-4 ring-blue-100" : "border-slate-200"}`}
+                        className={`grid grid-cols-[64px_1fr_auto] items-center gap-3 rounded-2xl border bg-white p-3 text-left transition hover:border-blue-600 ${selected?.id === part.id ? "border-blue-600 ring-4 ring-blue-100" : "border-slate-200"}`}
                       >
-                        <span className="grid h-13 w-13 place-items-center rounded-xl bg-slate-100 text-slate-500">
-                          <CategoryIcon name={part.glyph} />
-                        </span>
+                        <ProductThumb product={part} size="lg" />
                         <span className="min-w-0">
                           <span className="block truncate text-sm font-medium">{part.name}</span>
                           <span className="mono block truncate text-xs text-slate-500">{part.brand} · {part.spec}</span>
@@ -128,15 +129,18 @@ export function BuilderClient({ buildParts }: { buildParts: Record<string, Produ
           </div>
           <div className="max-h-[300px] overflow-y-auto px-6 py-2">
             {lines.map(({ slot, part }) => (
-              <div key={slot.key} className="flex justify-between gap-3 border-b border-slate-100 py-3 text-sm">
-                <span className="text-slate-500">{slot.label.split(" ")[0]}</span>
+              <div key={slot.key} className="grid grid-cols-[1fr_auto] gap-3 border-b border-slate-100 py-3 text-sm">
+                <span className="self-center text-slate-500">{slot.label.split(" ")[0]}</span>
                 {part ? (
-                  <span className="text-right">
-                    <b className="block font-medium">{part.name}</b>
-                    <span className="mono text-xs text-slate-500">{baht(part.price)}</span>
+                  <span className="flex min-w-0 max-w-[210px] items-center justify-end gap-3 text-right">
+                    <span className="min-w-0">
+                      <b className="block truncate font-medium">{part.name}</b>
+                      <span className="mono text-xs text-slate-500">{baht(part.price)}</span>
+                    </span>
+                    <ProductThumb product={part} size="sm" />
                   </span>
                 ) : (
-                  <span className="mono text-xs text-slate-400">{slot.required ? "ยังไม่ได้เลือก" : "-"}</span>
+                  <span className="mono self-center text-xs text-slate-400">{slot.required ? "ยังไม่ได้เลือก" : "-"}</span>
                 )}
               </div>
             ))}
@@ -160,5 +164,23 @@ export function BuilderClient({ buildParts }: { buildParts: Record<string, Produ
         </aside>
       </section>
     </main>
+  );
+}
+
+function ProductThumb({ product, size = "md" }: { product: Product; size?: "sm" | "md" | "lg" }) {
+  const sizeClass = {
+    sm: "h-11 w-11 rounded-xl",
+    md: "h-14 w-14 rounded-2xl",
+    lg: "h-16 w-16 rounded-2xl",
+  }[size];
+
+  return (
+    <span className={`relative grid shrink-0 place-items-center overflow-hidden bg-slate-100 text-slate-500 ${sizeClass}`}>
+      {product.image ? (
+        <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+      ) : (
+        <CategoryIcon name={product.glyph} className={size === "sm" ? "h-5 w-5" : "h-6 w-6"} />
+      )}
+    </span>
   );
 }
