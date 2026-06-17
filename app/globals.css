@@ -49,6 +49,27 @@ button {
   padding-inline: 28px;
 }
 
+.field-input {
+  height: 3rem;
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  padding-inline: 1rem;
+  color: #0f172a;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.field-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgb(37 99 235 / 0.12);
+}
+
+.field-textarea {
+  height: auto;
+}
+
 @media (max-width: 640px) {
   .wrap {
     padding-inline: 18px;

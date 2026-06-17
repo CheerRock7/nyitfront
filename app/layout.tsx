@@ -18,7 +18,7 @@ const ibmMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "COMPUTER HUB",
+  title: "NYIT Computer",
   description: "ร้านคอมพิวเตอร์ออนไลน์ จัดสเปกคอมและอุปกรณ์ครบ",
 };
 

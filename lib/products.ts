@@ -85,6 +85,27 @@ export async function getProducts(): Promise<Product[]> {
   return rows.map(toProduct);
 }
 
+export async function getProductById(id: string): Promise<Product | null> {
+  const rows = await query<ProductRow>(
+    `SELECT p.id, p.name, c.slug AS cat, c.name AS cat_name,
+            p.brand, p.model, p.notes, s.price, s.image_url
+       FROM products p
+       LEFT JOIN categories c ON c.id = p.category_id
+       JOIN LATERAL (
+         SELECT MIN(ps.price) AS price,
+                (ARRAY_AGG(ps.image_url ORDER BY ps.price, ps.id)
+                   FILTER (WHERE ps.image_url IS NOT NULL))[1] AS image_url
+           FROM product_serials ps
+          WHERE ps.product_id = p.id AND ps.status = 'in_stock'
+          GROUP BY ps.product_id
+       ) s ON true
+      WHERE p.status = 'active' AND p.id = $1
+      LIMIT 1`,
+    [id],
+  );
+  return rows[0] ? toProduct(rows[0]) : null;
+}
+
 // Products grouped by category slug, for the PC builder slot pickers.
 export async function getBuildParts(): Promise<Record<string, Product[]>> {
   const products = await getProducts();

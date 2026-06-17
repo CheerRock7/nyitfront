@@ -3,11 +3,16 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Menu, Search, ShoppingCart, User, X } from "lucide-react";
+import { ChevronDown, ClipboardList, LogOut, Menu, Search, Settings, ShoppingCart, User, X } from "lucide-react";
 import { baht, type Category, type Product } from "@/lib/data";
 import { CategoryIcon } from "@/components/icons";
+import { AuthForm } from "@/components/auth-form";
 
 type CartLine = Product & { quantity: number };
+type AuthUser = { name: string; email: string; phone?: string; address?: string };
+type StoredAccount = AuthUser & { password: string };
+type AuthProfileInput = AuthUser & { password?: string };
+type FooterItem = { label: string; href?: string; external?: boolean };
 type CartContextValue = {
   lines: CartLine[];
   total: number;
@@ -16,8 +21,16 @@ type CartContextValue = {
   setQuantity: (id: string, quantity: number) => void;
   openCart: () => void;
 };
+type AuthContextValue = {
+  user: AuthUser | null;
+  login: (email: string, password: string) => boolean;
+  register: (name: string, email: string, password: string) => boolean;
+  updateProfile: (profile: AuthProfileInput) => { ok: boolean; error?: string };
+  logout: () => void;
+};
 
 const CartContext = createContext<CartContextValue | null>(null);
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function useCart() {
   const context = useContext(CartContext);
@@ -25,13 +38,36 @@ export function useCart() {
   return context;
 }
 
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used inside SiteChrome");
+  return context;
+}
+
 const nav = [
   { href: "/", label: "หน้าแรก" },
   { href: "/products", label: "สินค้า" },
   { href: "/builder", label: "จัดสเปกคอม" },
-  { href: "/#promo", label: "โปรโมชั่น" },
   { href: "/#contact", label: "ติดต่อเรา" },
 ];
+
+const defaultAccounts: StoredAccount[] = [{ name: "Admin", email: "admin", password: "nyit1234" }];
+
+function readAccounts(): StoredAccount[] {
+  try {
+    const accounts = JSON.parse(localStorage.getItem("nyit_auth_accounts_v1") || "[]") as StoredAccount[];
+    const merged = [...accounts];
+    for (const account of defaultAccounts) {
+      const index = merged.findIndex((item) => item.email === account.email);
+      if (index < 0) merged.push(account);
+    }
+    localStorage.setItem("nyit_auth_accounts_v1", JSON.stringify(merged));
+    return merged;
+  } catch {
+    localStorage.setItem("nyit_auth_accounts_v1", JSON.stringify(defaultAccounts));
+    return defaultAccounts;
+  }
+}
 
 export function SiteChrome({ children, categories }: { children: ReactNode; categories: Category[] }) {
   const pathname = usePathname();
@@ -40,16 +76,22 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
   const [cartProducts, setCartProducts] = useState<Record<string, Product>>({});
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [query, setQuery] = useState("");
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   // Rehydrate the cart (quantities + product details) from localStorage on mount.
   useEffect(() => {
     try {
       setCart(JSON.parse(localStorage.getItem("chub_cart_v2") || "{}"));
       setCartProducts(JSON.parse(localStorage.getItem("chub_cart_products_v1") || "{}"));
+      setUser(JSON.parse(localStorage.getItem("nyit_auth_user_v1") || "null"));
     } catch {
       setCart({});
       setCartProducts({});
+      setUser(null);
     }
   }, []);
 
@@ -93,14 +135,82 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
     },
   };
 
+  const authValue: AuthContextValue = {
+    user,
+    login(email, password) {
+      const normalizedEmail = email.trim().toLowerCase();
+      const accounts = readAccounts();
+      const account = accounts.find((item) => item.email === normalizedEmail && item.password === password);
+      if (!account) return false;
+      const nextUser = { name: account.name, email: account.email, phone: account.phone, address: account.address };
+      setUser(nextUser);
+      localStorage.setItem("nyit_auth_user_v1", JSON.stringify(nextUser));
+      return true;
+    },
+    register(name, email, password) {
+      const normalizedEmail = email.trim().toLowerCase();
+      const accounts = readAccounts();
+      if (accounts.some((item) => item.email === normalizedEmail)) return false;
+      const nextAccount: StoredAccount = { name: name.trim(), email: normalizedEmail, password };
+      const nextAccounts: StoredAccount[] = [...accounts, nextAccount];
+      const nextUser = { name: nextAccount.name, email: nextAccount.email };
+      localStorage.setItem("nyit_auth_accounts_v1", JSON.stringify(nextAccounts));
+      localStorage.setItem("nyit_auth_user_v1", JSON.stringify(nextUser));
+      setUser(nextUser);
+      return true;
+    },
+    updateProfile(profile) {
+      if (!user) return { ok: false, error: "กรุณาเข้าสู่ระบบก่อนแก้ไขข้อมูล" };
+
+      const name = profile.name.trim();
+      const email = profile.email.trim().toLowerCase();
+      if (!name || !email) return { ok: false, error: "กรุณากรอกชื่อและ ID/อีเมล" };
+
+      const accounts = readAccounts();
+      if (accounts.some((account) => account.email === email && account.email !== user.email)) {
+        return { ok: false, error: "ID/อีเมลนี้ถูกใช้แล้ว" };
+      }
+
+      const existing = accounts.find((account) => account.email === user.email);
+      const nextAccount: StoredAccount = {
+        name,
+        email,
+        phone: profile.phone?.trim(),
+        address: profile.address?.trim(),
+        password: profile.password?.trim() || existing?.password || "",
+      };
+      const nextAccounts = accounts.some((account) => account.email === user.email)
+        ? accounts.map((account) => (account.email === user.email ? nextAccount : account))
+        : [...accounts, nextAccount];
+      const nextUser: AuthUser = { name: nextAccount.name, email: nextAccount.email, phone: nextAccount.phone, address: nextAccount.address };
+
+      localStorage.setItem("nyit_auth_accounts_v1", JSON.stringify(nextAccounts));
+      localStorage.setItem("nyit_auth_user_v1", JSON.stringify(nextUser));
+      setUser(nextUser);
+      return { ok: true };
+    },
+    logout() {
+      localStorage.removeItem("nyit_auth_user_v1");
+      setUser(null);
+      setAccountOpen(false);
+    },
+  };
+
   const doSearch = () => {
     const q = query.trim();
     router.push(q ? `/products?q=${encodeURIComponent(q)}` : "/products");
     setMenuOpen(false);
   };
 
+  const openAuth = (mode: "login" | "register") => {
+    setAuthMode(mode);
+    setAuthOpen(true);
+    setMenuOpen(false);
+  };
+
   return (
     <CartContext.Provider value={value}>
+      <AuthContext.Provider value={authValue}>
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/75 backdrop-blur-xl">
         <div className="wrap grid h-[72px] grid-cols-[auto_1fr_auto] items-center gap-5 max-md:h-16 max-md:grid-cols-[auto_auto]">
           <Brand />
@@ -128,10 +238,34 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
                 </Link>
               ))}
             </nav>
-            <button className="hidden h-10 rounded-full bg-slate-950 px-4 text-sm font-medium text-white md:inline-flex md:items-center md:gap-2">
-              <User className="h-4 w-4" />
-              เข้าสู่ระบบ
-            </button>
+            {user ? (
+              <div className="relative hidden md:block">
+                <button
+                  onClick={() => setAccountOpen((current) => !current)}
+                  className="inline-flex h-10 items-center gap-2 rounded-full bg-slate-950 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
+                  aria-expanded={accountOpen}
+                  aria-haspopup="menu"
+                >
+                  <User className="h-4 w-4" />
+                  {user.name}
+                  <ChevronDown className={`h-4 w-4 transition ${accountOpen ? "rotate-180" : ""}`} />
+                </button>
+                {accountOpen ? (
+                  <>
+                    <button className="fixed inset-0 z-[60] cursor-default" onClick={() => setAccountOpen(false)} aria-label="ปิดเมนูบัญชี" />
+                    <AccountDropdown user={user} onClose={() => setAccountOpen(false)} onCart={() => { setDrawerOpen(true); setAccountOpen(false); }} onLogout={authValue.logout} />
+                  </>
+                ) : null}
+              </div>
+            ) : (
+              <button
+                onClick={() => openAuth("login")}
+                className="hidden h-10 rounded-full bg-slate-950 px-4 text-sm font-medium text-white md:inline-flex md:items-center md:gap-2"
+              >
+                <User className="h-4 w-4" />
+                เข้าสู่ระบบ
+              </button>
+            )}
             <button
               onClick={() => setDrawerOpen(true)}
               className="relative grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-white transition hover:border-slate-950"
@@ -157,7 +291,7 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
 
       {children}
 
-      <footer className="bg-slate-950 text-slate-300">
+      <footer id="contact" className="bg-slate-950 text-slate-300">
         <div className="wrap py-14">
           <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1.2fr]">
             <div>
@@ -166,17 +300,31 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
                 ร้านคอมพิวเตอร์และอุปกรณ์ไอทีออนไลน์ จัดสเปกตามงบ ประกอบฟรี รับประกันของแท้ทุกชิ้น
               </p>
             </div>
-            <FooterList title="เมนู" items={nav.map((item) => item.label)} />
-            <FooterList title="หมวดหมู่" items={categories.slice(0, 6).map((item) => item.name)} />
-            <FooterList title="ติดต่อเรา" items={["02-XXX-XXXX", "Line: @computerhub", "support@computerhub.co.th", "กรุงเทพมหานคร"]} />
+            <FooterList title="เมนู" items={nav} />
+            <FooterList
+              title="หมวดหมู่"
+              items={categories.slice(0, 6).map((item) => ({ label: item.name, href: `/products?cat=${encodeURIComponent(item.id)}` }))}
+            />
+            <FooterList
+              title="ติดต่อเรา"
+              items={[
+                { label: "Facebook: NYCM Service", href: "https://www.facebook.com/nycmservice/", external: true },
+                { label: "02-XXX-XXXX" },
+                { label: "Line: @nyitcomputer" },
+                { label: "support@nyitcomputer.co.th", href: "mailto:support@nyitcomputer.co.th" },
+                { label: "เชียงใหม่" },
+              ]}
+            />
           </div>
-          <div className="mono mt-10 border-t border-white/10 pt-6 text-xs text-slate-500">© 2026 COMPUTER HUB</div>
+          <div className="mono mt-10 border-t border-white/10 pt-6 text-xs text-slate-500">© 2026 NYIT Computer</div>
         </div>
       </footer>
 
       {(drawerOpen || menuOpen) && <button className="fixed inset-0 z-[70] bg-slate-950/40 backdrop-blur-sm" onClick={() => { setDrawerOpen(false); setMenuOpen(false); }} aria-label="ปิด" />}
-      <CartDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} query={query} setQuery={setQuery} doSearch={doSearch} />
+      <CartDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onRequireLogin={() => openAuth("login")} />
+      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} query={query} setQuery={setQuery} doSearch={doSearch} openAuth={openAuth} />
+      <AuthModal open={authOpen} mode={authMode} setMode={setAuthMode} onClose={() => setAuthOpen(false)} />
+      </AuthContext.Provider>
     </CartContext.Provider>
   );
 }
@@ -185,29 +333,96 @@ function Brand({ dark = false }: { dark?: boolean }) {
   return (
     <Link href="/" className={`inline-flex items-center gap-3 text-lg font-semibold ${dark ? "text-white" : "text-slate-950"}`}>
       <span className={`grid h-9 w-9 place-items-center rounded-[10px] ${dark ? "bg-white text-slate-950" : "bg-slate-950 text-white"}`}>
-        <span className="mono">C</span>
+        <span className="mono">N</span>
       </span>
-      <span>COMPUTER</span>
-      <em className="not-italic text-blue-600">HUB</em>
+      <span>NYIT</span>
+      <em className="not-italic text-blue-600">Computer</em>
     </Link>
   );
 }
 
-function FooterList({ title, items }: { title: string; items: string[] }) {
+function AccountDropdown({ user, onClose, onCart, onLogout }: { user: AuthUser; onClose: () => void; onCart: () => void; onLogout: () => void }) {
+  return (
+    <div className="absolute right-0 top-12 z-[80] w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-200/80" role="menu">
+      <div className="border-b border-slate-100 p-4">
+        <div className="text-sm font-semibold text-slate-950">{user.name}</div>
+        <div className="mt-1 truncate text-xs text-slate-500">{user.email}</div>
+      </div>
+      <div className="p-2">
+        <Link href="/settings" onClick={onClose} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-50" role="menuitem">
+          <Settings className="h-4 w-4 text-slate-500" />
+          <span>
+            <span className="block font-medium text-slate-950">Settings</span>
+            <span className="text-xs text-slate-500">ตั้งค่าบัญชีและโปรไฟล์</span>
+          </span>
+        </Link>
+        <button onClick={onCart} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-50" role="menuitem">
+          <ClipboardList className="h-4 w-4 text-slate-500" />
+          <span>
+            <span className="block font-medium text-slate-950">Orders / Cart</span>
+            <span className="text-xs text-slate-500">ดูตะกร้าและรายการสั่งซื้อ</span>
+          </span>
+        </button>
+      </div>
+      <div className="border-t border-slate-100 p-2">
+        <button onClick={onLogout} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-red-600 transition hover:bg-red-50" role="menuitem">
+          <LogOut className="h-4 w-4" />
+          Logout
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FooterList({ title, items }: { title: string; items: FooterItem[] }) {
   return (
     <div>
       <h4 className="mb-4 text-sm font-semibold text-white">{title}</h4>
       <ul className="space-y-2 text-sm text-slate-400">
-        {items.map((item) => (
-          <li key={item}>{item}</li>
-        ))}
+        {items.map((item) => {
+          const isExternal = item.external || /^(https?:|mailto:|tel:)/.test(item.href ?? "");
+
+          return (
+            <li key={`${item.label}-${item.href ?? ""}`}>
+              {item.href ? (
+                isExternal ? (
+                  <a href={item.href} target={item.external ? "_blank" : undefined} rel={item.external ? "noreferrer" : undefined} className="transition hover:text-white">
+                    {item.label}
+                  </a>
+                ) : (
+                  <Link href={item.href} className="transition hover:text-white">
+                    {item.label}
+                  </Link>
+                )
+              ) : (
+                item.label
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
 }
 
-function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+function CartDrawer({ open, onClose, onRequireLogin }: { open: boolean; onClose: () => void; onRequireLogin: () => void }) {
   const { lines, total, setQuantity } = useCart();
+  const { user } = useAuth();
+  const [notice, setNotice] = useState("");
+
+  const checkout = () => {
+    if (!lines.length) {
+      setNotice("กรุณาเลือกสินค้าก่อนดำเนินการสั่งซื้อ");
+      return;
+    }
+    if (!user) {
+      setNotice("กรุณาเข้าสู่ระบบก่อนดำเนินการสั่งซื้อ");
+      onRequireLogin();
+      return;
+    }
+    setNotice("พร้อมดำเนินการสั่งซื้อสำหรับบัญชี " + user.name);
+  };
+
   return (
     <aside className={`fixed right-0 top-0 z-[80] flex h-full w-[420px] max-w-[92vw] flex-col bg-white shadow-2xl transition-transform ${open ? "translate-x-0" : "translate-x-full"}`}>
       <div className="flex items-center justify-between border-b border-slate-200 p-6">
@@ -251,7 +466,10 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
           <span className="text-sm text-slate-500">ยอดรวม</span>
           <span className="mono text-2xl font-semibold">{baht(total)}</span>
         </div>
-        <button className="h-12 w-full rounded-full bg-blue-600 font-medium text-white shadow-lg shadow-blue-600/20">ดำเนินการสั่งซื้อ</button>
+        {notice ? <p className="mb-3 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-700">{notice}</p> : null}
+        <button onClick={checkout} className="h-12 w-full rounded-full bg-blue-600 font-medium text-white shadow-lg shadow-blue-600/20">
+          {user ? "ดำเนินการสั่งซื้อ" : "เข้าสู่ระบบเพื่อสั่งซื้อ"}
+        </button>
       </div>
     </aside>
   );
@@ -263,13 +481,18 @@ function MobileMenu({
   query,
   setQuery,
   doSearch,
+  openAuth,
 }: {
   open: boolean;
   onClose: () => void;
   query: string;
   setQuery: (value: string) => void;
   doSearch: () => void;
+  openAuth: (mode: "login" | "register") => void;
 }) {
+  const { user, logout } = useAuth();
+  const { openCart } = useCart();
+
   return (
     <aside className={`fixed right-0 top-0 z-[80] h-full w-[320px] max-w-[88vw] bg-white p-5 shadow-2xl transition-transform ${open ? "translate-x-0" : "translate-x-full"}`}>
       <div className="mb-4 flex items-center justify-between">
@@ -295,6 +518,78 @@ function MobileMenu({
           </Link>
         ))}
       </nav>
+      <div className="mt-5 border-t border-slate-200 pt-5">
+        {user ? (
+          <div className="grid gap-2">
+            <div className="rounded-xl bg-slate-50 px-4 py-3">
+              <div className="text-sm font-semibold text-slate-950">{user.name}</div>
+              <div className="truncate text-xs text-slate-500">{user.email}</div>
+            </div>
+            <Link href="/settings" onClick={onClose} className="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 font-medium text-slate-700">
+              <Settings className="h-4 w-4" />
+              Settings
+            </Link>
+            <button
+              onClick={() => {
+                openCart();
+                onClose();
+              }}
+              className="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 font-medium text-slate-700"
+            >
+              <ClipboardList className="h-4 w-4" />
+              Orders / Cart
+            </button>
+            <button
+              onClick={() => {
+                logout();
+                onClose();
+              }}
+              className="flex w-full items-center gap-3 rounded-xl bg-slate-950 px-4 py-3 font-medium text-white"
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </button>
+          </div>
+        ) : (
+          <div className="grid gap-2">
+            <button onClick={() => openAuth("login")} className="rounded-xl bg-slate-950 px-4 py-3 text-center font-medium text-white">
+              เข้าสู่ระบบ
+            </button>
+            <button onClick={() => openAuth("register")} className="rounded-xl border border-slate-300 px-4 py-3 text-center font-medium text-slate-700">
+              สมัครสมาชิก
+            </button>
+          </div>
+        )}
+      </div>
     </aside>
+  );
+}
+
+function AuthModal({
+  open,
+  mode,
+  setMode,
+  onClose,
+}: {
+  open: boolean;
+  mode: "login" | "register";
+  setMode: (mode: "login" | "register") => void;
+  onClose: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
+      <div className="relative w-full max-w-[440px]">
+        <button
+          onClick={onClose}
+          className="absolute -right-2 -top-2 z-10 grid h-10 w-10 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg"
+          aria-label="ปิด"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <AuthForm mode={mode} onModeChange={setMode} onSuccess={onClose} />
+      </div>
+    </div>
   );
 }
