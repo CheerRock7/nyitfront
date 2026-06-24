@@ -8,9 +8,12 @@ import { categoryMeta, type Category, type Product } from "@/lib/data";
 function imageUrl(path: string | null): string | undefined {
   if (!path) return undefined;
   if (/^https?:\/\//i.test(path)) return path;
+  const rel = path.startsWith("/") ? path : `/${path}`;
   const base = (process.env.NEXT_PUBLIC_UPLOADS_BASE_URL ?? "").replace(/\/$/, "");
-  if (!base) return undefined;
-  return `${base}${path.startsWith("/") ? "" : "/"}${path}`;
+  // With no base, return a same-origin relative path (e.g. "/uploads/abc.png").
+  // next.config rewrites /uploads/* to the VPS, so images load over the page's
+  // own origin — avoids mixed-content blocking when served over HTTPS (ngrok).
+  return base ? `${base}${rel}` : rel;
 }
 
 type CategoryRow = { id: string; name: string; slug: string; sort: number };

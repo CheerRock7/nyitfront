@@ -10,6 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@yudiel/react-qr-scanner": "^2.6.0",
     "lucide-react": "^1.17.0",
     "next": "^16.2.7",
     "pg": "^8.21.0",

@@ -7,6 +7,7 @@ import { ChevronDown, ClipboardList, LogOut, Menu, Search, Settings, ShoppingCar
 import { baht, type Category, type Product } from "@/lib/data";
 import { CategoryIcon } from "@/components/icons";
 import { AuthForm } from "@/components/auth-form";
+import { BarcodeScanner } from "@/components/barcode-scanner";
 
 type CartLine = Product & { quantity: number };
 type AuthUser = { name: string; email: string; username?: string; phone?: string; address?: string };
@@ -249,6 +250,7 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
             />
           </div>
           <div className="flex items-center justify-end gap-2">
+            <BarcodeScanner />
             <nav className="hidden items-center gap-1 lg:flex">
               {nav.slice(0, 3).map((item) => (
                 <Link
