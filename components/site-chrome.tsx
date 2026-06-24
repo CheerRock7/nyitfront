@@ -332,9 +332,8 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
             <FooterList
               title="ติดต่อเรา"
               items={[
-                { label: "Facebook: NYCM Service", href: "https://www.facebook.com/nycmservice/", external: true },
-                { label: "02-XXX-XXXX" },
-                { label: "Line: @nyitcomputer" },
+                { label: "Facebook: NYIT Computor", href: "https://www.facebook.com/nycmservice/", external: true },
+                { label: "081-961-3869" },
                 { label: "support@nyitcomputer.co.th", href: "mailto:support@nyitcomputer.co.th" },
                 { label: "เชียงใหม่" },
               ]}
