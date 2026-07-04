@@ -32,6 +32,8 @@ type ProductRow = {
   image_url: string | null;
 };
 
+type BundleRow = ProductRow;
+
 function toProduct(row: ProductRow): Product {
   const slug = row.cat ?? "";
   const meta = categoryMeta[slug];
@@ -55,7 +57,7 @@ export async function getCategories(): Promise<Category[]> {
   const rows = await query<CategoryRow>(
     "SELECT id, name, slug, sort FROM categories ORDER BY sort, name",
   );
-  return rows.map((row) => {
+  const categories: Category[] = rows.map((row) => {
     const meta = categoryMeta[row.slug];
     return {
       id: row.slug,
@@ -65,6 +67,48 @@ export async function getCategories(): Promise<Category[]> {
       feature: meta?.feature,
     };
   });
+  if (!categories.some((category) => category.id === "set")) {
+    categories.unshift({
+      id: "set",
+      name: "สินค้าแบบชุด",
+      en: categoryMeta.set.en,
+      icon: categoryMeta.set.icon,
+    });
+  }
+  return categories;
+}
+
+async function getBundleProducts(bundleId?: string): Promise<Product[]> {
+  const rows = await query<BundleRow>(
+    `SELECT ('bundle-' || b.id) AS id,
+            b.name,
+            'set' AS cat,
+            'สินค้าแบบชุด' AS cat_name,
+            'NYIT' AS brand,
+            ROUND(COALESCE(SUM(s.price), 0) * (1 - COALESCE(b.discount_pct, 0) / 100), 2)::text AS price,
+            (COUNT(p.id)::text || ' รายการในชุด') AS model,
+            STRING_AGG(p.name, ' + ' ORDER BY p.id) AS notes,
+            NULL::text AS description,
+            NULL::jsonb AS specs,
+            (ARRAY_AGG(s.image_url ORDER BY p.id)
+              FILTER (WHERE s.image_url IS NOT NULL))[1] AS image_url
+       FROM bundles b
+       LEFT JOIN bundle_items bi ON bi.bundle_id = b.id
+       LEFT JOIN products p ON p.id = bi.product_id
+       LEFT JOIN LATERAL (
+         SELECT MIN(ps.price) AS price,
+                (ARRAY_AGG(ps.image_url ORDER BY ps.price, ps.id)
+                   FILTER (WHERE ps.image_url IS NOT NULL))[1] AS image_url
+           FROM product_serials ps
+          WHERE ps.product_id = p.id AND ps.status = 'in_stock'
+          GROUP BY ps.product_id
+       ) s ON true
+      WHERE ($1::bigint IS NULL OR b.id = $1::bigint)
+      GROUP BY b.id, b.name, b.discount_pct
+      ORDER BY b.id`,
+    [bundleId ?? null],
+  );
+  return rows.map(toProduct);
 }
 
 export async function getProducts(): Promise<Product[]> {
@@ -89,10 +133,17 @@ export async function getProducts(): Promise<Product[]> {
       WHERE p.status = 'active'
       ORDER BY p.id`,
   );
-  return rows.map(toProduct);
+  const products = rows.map(toProduct);
+  const bundles = await getBundleProducts();
+  return [...products, ...bundles];
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
+  if (id.startsWith("bundle-")) {
+    const bundles = await getBundleProducts(id.replace("bundle-", ""));
+    return bundles[0] ?? null;
+  }
+
   const rows = await query<ProductRow>(
     `SELECT p.id, p.name, c.slug AS cat, c.name AS cat_name,
             p.brand, p.model, p.notes, p.description, p.specs, s.price, s.image_url

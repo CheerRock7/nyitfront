@@ -4,8 +4,9 @@ import Link from "next/link";
 import { ArrowLeft, ShoppingCart } from "lucide-react";
 import { baht, type Product } from "@/lib/data";
 import { CategoryIcon } from "@/components/icons";
-import { useCart } from "@/components/site-chrome";
+import { useCart } from "@/components/app-context";
 import { ProductCard } from "@/components/product-card";
+import { AdminFavoriteButton } from "@/components/admin-featured";
 
 export function ProductDetailClient({ product, related }: { product: Product; related: Product[] }) {
   const { addItem } = useCart();
@@ -22,12 +23,13 @@ export function ProductDetailClient({ product, related }: { product: Product; re
       </section>
 
       <section className="wrap grid gap-8 py-10 lg:grid-cols-[1fr_460px]">
-        <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
-          <div className="relative grid min-h-[360px] place-items-center bg-slate-100 md:min-h-[520px]">
+        <div className="self-start overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+          <div className="relative grid place-items-center bg-slate-100 p-6">
             <div className="absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_30%,rgba(37,99,235,.13),transparent_70%)]" />
+            <AdminFavoriteButton product={product} className="absolute right-4 top-4 z-10" />
             {product.image ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={product.image} alt={product.name} className="relative max-h-[480px] w-full object-contain p-6" />
+              <img src={product.image} alt={product.name} className="relative max-h-[560px] max-w-full object-contain" />
             ) : (
               <CategoryIcon name={product.glyph} className="relative h-32 w-32 text-slate-900/15" />
             )}

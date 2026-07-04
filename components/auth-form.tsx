@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { LockKeyhole, Mail, UserRound } from "lucide-react";
-import { useAuth } from "@/components/site-chrome";
+import { useAuth } from "@/components/app-context";
 
 type AuthFormProps = {
   mode: "login" | "register";
@@ -61,7 +61,7 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
       <div className="space-y-4">
         {isRegister ? (
           <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-slate-700">ชื่อผู้ใช้</span>
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">user</span>
             <span className="relative block">
               <UserRound className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
               <input
@@ -70,14 +70,14 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 className="h-12 w-full rounded-xl border border-slate-300 pl-12 pr-4 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
-                placeholder="NYIT customer"
+                placeholder="user"
               />
             </span>
           </label>
         ) : null}
 
         <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-slate-700">ชื่อผู้ใช้งาน หรืออีเมล</span>
+          <span className="mb-1.5 block text-sm font-medium text-slate-700">{isRegister ? "email" : "User or email"}</span>
           <span className="relative block">
             <Mail className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
             <input
@@ -87,13 +87,13 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className="h-12 w-full rounded-xl border border-slate-300 pl-12 pr-4 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
-              placeholder={isRegister ? "username หรือ you@example.com" : "Admin, user หรือ you@example.com"}
+              placeholder={isRegister ? "email" : "User or email"}
             />
           </span>
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-slate-700">รหัสผ่าน</span>
+          <span className="mb-1.5 block text-sm font-medium text-slate-700">password</span>
           <span className="relative block">
             <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
             <input
@@ -104,7 +104,7 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               className="h-12 w-full rounded-xl border border-slate-300 pl-12 pr-4 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
-              placeholder="อย่างน้อย 6 ตัวอักษร"
+              placeholder="password"
             />
           </span>
         </label>

@@ -2,48 +2,25 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { ChevronDown, ClipboardList, LogOut, Menu, Search, Settings, ShoppingCart, User, X } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ChevronDown, ClipboardList, LogOut, Menu, Search, Settings, ShoppingCart, Star, User, X } from "lucide-react";
 import { baht, type Category, type Product } from "@/lib/data";
 import { CategoryIcon } from "@/components/icons";
 import { AuthForm } from "@/components/auth-form";
 import { BarcodeScanner } from "@/components/barcode-scanner";
-
-type CartLine = Product & { quantity: number };
-type AuthUser = { name: string; email: string; username?: string; phone?: string; address?: string };
-type StoredAccount = AuthUser & { password: string };
-type AuthProfileInput = AuthUser & { password?: string };
+import {
+  AuthContext,
+  CartContext,
+  type AuthContextValue,
+  type AuthProfileInput,
+  type AuthUser,
+  type CartContextValue,
+  type CartLine,
+  type StoredAccount,
+  useAuth,
+  useCart,
+} from "@/components/app-context";
 type FooterItem = { label: string; href?: string; external?: boolean };
-type CartContextValue = {
-  lines: CartLine[];
-  total: number;
-  count: number;
-  addItem: (product: Product, quantity?: number) => void;
-  setQuantity: (id: string, quantity: number) => void;
-  openCart: () => void;
-};
-type AuthContextValue = {
-  user: AuthUser | null;
-  login: (email: string, password: string) => boolean;
-  register: (name: string, email: string, password: string) => boolean;
-  updateProfile: (profile: AuthProfileInput) => { ok: boolean; error?: string };
-  logout: () => void;
-};
-
-const CartContext = createContext<CartContextValue | null>(null);
-const AuthContext = createContext<AuthContextValue | null>(null);
-
-export function useCart() {
-  const context = useContext(CartContext);
-  if (!context) throw new Error("useCart must be used inside SiteChrome");
-  return context;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used inside SiteChrome");
-  return context;
-}
 
 const nav = [
   { href: "/", label: "หน้าแรก" },
@@ -367,6 +344,8 @@ function Brand({ dark = false }: { dark?: boolean }) {
 }
 
 function AccountDropdown({ user, onClose, onCart, onLogout }: { user: AuthUser; onClose: () => void; onCart: () => void; onLogout: () => void }) {
+  const admin = [user.email, user.username, user.name].map(normalizeIdentifier).includes("admin");
+
   return (
     <div className="absolute right-0 top-12 z-[80] w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-200/80" role="menu">
       <div className="border-b border-slate-100 p-4">
@@ -381,6 +360,15 @@ function AccountDropdown({ user, onClose, onCart, onLogout }: { user: AuthUser; 
             <span className="text-xs text-slate-500">ตั้งค่าบัญชีและโปรไฟล์</span>
           </span>
         </Link>
+        {admin ? (
+          <Link href="/admin" onClick={onClose} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-slate-700 transition hover:bg-amber-50" role="menuitem">
+            <Star className="h-4 w-4 text-amber-500" />
+            <span>
+              <span className="block font-medium text-slate-950">Admin Dashboard</span>
+              <span className="text-xs text-slate-500">จัดการสินค้าแนะนำ</span>
+            </span>
+          </Link>
+        ) : null}
         <button onClick={onCart} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-50" role="menuitem">
           <ClipboardList className="h-4 w-4 text-slate-500" />
           <span>

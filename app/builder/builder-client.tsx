@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Check, RotateCcw, ShoppingCart, Zap } from "lucide-react";
 import { baht, budgets, buildSlots, type Product } from "@/lib/data";
 import { CategoryIcon } from "@/components/icons";
-import { useCart } from "@/components/site-chrome";
+import { useCart } from "@/components/app-context";
 
 export function BuilderClient({ buildParts }: { buildParts: Record<string, Product[]> }) {
   const params = useSearchParams();

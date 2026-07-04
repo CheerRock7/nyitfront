@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { ArrowLeft, Pencil, Save, Settings, UserRound, X } from "lucide-react";
-import { useAuth } from "@/components/site-chrome";
+import { useAuth } from "@/components/app-context";
 
 export function SettingsClient() {
   const { user, updateProfile } = useAuth();

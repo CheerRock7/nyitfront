@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, ShoppingCart } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 import { baht, type Product } from "@/lib/data";
 import { CategoryIcon } from "@/components/icons";
-import { useCart } from "@/components/site-chrome";
+import { useCart } from "@/components/app-context";
+import { AdminFavoriteButton } from "@/components/admin-featured";
 
 const badgeLabel = {
   hot: "ขายดี",
@@ -24,12 +25,7 @@ export function ProductCard({ product }: { product: Product }) {
             {badgeLabel[product.badge]}
           </span>
         ) : null}
-        <span
-          className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white/90 text-slate-700 opacity-0 transition group-hover:opacity-100"
-          aria-label="ถูกใจ"
-        >
-          <Heart className="h-4 w-4" />
-        </span>
+        <AdminFavoriteButton product={product} className="absolute right-3 top-3 opacity-0 group-hover:opacity-100" />
         {product.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

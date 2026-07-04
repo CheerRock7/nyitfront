@@ -39,3 +39,10 @@ chats/
 
 # Private collaborator handoff (contains real credentials — never push, repo is public)
 AGENTS*.md
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

@@ -1,91 +1,88 @@
 import Link from "next/link";
-import { MessageCircle, Search, ShieldCheck, Truck, Wrench } from "lucide-react";
-import { builderCategory } from "@/lib/data";
+import {
+  ArrowRight,
+  Wrench,
+} from "lucide-react";
+import { builderCategory, categoryMeta, type Category, type Product } from "@/lib/data";
 import { getCategories, getProducts } from "@/lib/products";
+import { RecommendedProductsCarousel } from "@/components/admin-featured";
+import { CategoryProductBanner } from "@/components/category-product-banner";
 import { CategoryIcon } from "@/components/icons";
-import { ProductCard } from "@/components/product-card";
-import { HeroProductBanner } from "@/components/hero-product-banner";
+import { PromotionImageBanner } from "@/components/promotion-banner";
 
 export const dynamic = "force-dynamic";
 
+const fallbackCategories: Category[] = [
+  { id: "gpu", name: "การ์ดจอ", en: categoryMeta.gpu.en, icon: categoryMeta.gpu.icon },
+  { id: "cpu", name: "ซีพียู", en: categoryMeta.cpu.en, icon: categoryMeta.cpu.icon },
+  { id: "ram", name: "แรม", en: categoryMeta.ram.en, icon: categoryMeta.ram.icon },
+  { id: "ssd", name: "SSD", en: categoryMeta.ssd.en, icon: categoryMeta.ssd.icon },
+  { id: "monitor", name: "จอภาพ", en: categoryMeta.monitor.en, icon: categoryMeta.monitor.icon },
+];
+
 export default async function HomePage() {
-  const [categories, products] = await Promise.all([getCategories(), getProducts()]);
-  const navCategories = [builderCategory, ...categories];
-  const featured = products.slice(0, 8);
+  const { categories, products, dbUnavailable } = await loadHomeData();
+  const navCategories = [builderCategory, ...(categories.length ? categories : fallbackCategories)];
 
   return (
-    <main>
-      <section className="relative overflow-hidden py-8 lg:py-10">
-        <div className="absolute inset-0 bg-[radial-gradient(60%_70%_at_78%_18%,rgba(37,99,235,.12),transparent_70%),radial-gradient(40%_50%_at_12%_90%,rgba(20,181,114,.10),transparent_70%)]" />
-        <div className="wrap relative">
-          <HeroProductBanner products={featured} />
-        </div>
-      </section>
-
-      <section className="border-y border-slate-200 bg-white">
-        <div className="wrap grid gap-5 py-6 md:grid-cols-4">
-          {[
-            [ShieldCheck, "สินค้ามือ 1-2", "คัดสภาพพร้อมรับประกัน"],
-            [Wrench, "ประกอบฟรี", "เมื่อซื้อครบชุด"],
-            [Truck, "ส่งฟรี", "สั่งครบ ฿3,000"],
-            [MessageCircle, "ปรึกษาฟรี", "ทีมงานผู้เชี่ยวชาญ"],
-          ].map(([Icon, title, text]) => (
-            <div key={String(title)} className="flex items-center gap-3">
-              <div className="grid h-11 w-11 place-items-center rounded-xl bg-slate-100 text-blue-700">
-                <Icon className="h-5 w-5" />
-              </div>
-              <div>
-                <b className="block text-sm">{title as string}</b>
-                <span className="text-xs text-slate-500">{text as string}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="bg-white py-14">
+    <main className="bg-[#f5f6f8]">
+      <h1 className="sr-only">NYIT Computer</h1>
+      <section className="border-b border-slate-200 bg-white py-8 lg:py-10">
         <div className="wrap">
-          <div className="rounded-[26px] border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-6 shadow-sm md:p-9">
-            <form action="/products" className="relative">
-              <Search className="absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-              <input name="q" className="h-14 w-full rounded-full border border-slate-300 pl-14 pr-32 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100" placeholder="ค้นหา การ์ดจอ, CPU, RAM, SSD, Monitor..." />
-              <button className="absolute right-1.5 top-1.5 h-11 rounded-full bg-blue-600 px-6 font-medium text-white">ค้นหา</button>
-            </form>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {["RTX 4070", "Ryzen 7", "DDR5 RAM", "NVMe SSD", "Monitor 165Hz"].map((tag) => (
-                <Link key={tag} href={`/products?q=${encodeURIComponent(tag)}`} className="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:border-blue-600 hover:text-blue-700">
-                  {tag}
-                </Link>
-              ))}
+          {dbUnavailable ? (
+            <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              กำลังแสดงหน้าแรกแบบตัวอย่าง เพราะยังเชื่อมต่อฐานข้อมูลไม่ได้
             </div>
-          </div>
+          ) : null}
+
+          <CategoryProductBanner products={products} />
         </div>
       </section>
 
-      <section className="py-20">
+      <section className="py-7">
+        <div className="wrap grid items-stretch gap-5 lg:grid-cols-2">
+          <PromoPanel
+            title="จัดสเปกคอมตามงบ"
+            eyebrow="PC Builder"
+            text="เลือก CPU, VGA, RAM, SSD และอุปกรณ์หลักในชุดเดียว เหมาะกับลูกค้าที่อยากได้เครื่องพร้อมใช้งาน"
+            href="/builder"
+            cta="เริ่มจัดสเปก"
+            icon={<Wrench className="h-6 w-6" />}
+          />
+          <PromotionImageBanner />
+        </div>
+      </section>
+
+      <section className="py-14">
         <div className="wrap">
-          <SectionHead eyebrow="หมวดหมู่สินค้า" title="เลือกช้อปตามหมวดหมู่" href="/products" />
+          <SectionHead title="สินค้าแนะนำ" href="/products" />
+          <RecommendedProductsCarousel products={products} />
+        </div>
+      </section>
+
+      <section className="pb-16">
+        <div className="wrap">
+          <SectionHead title="หมวดหมู่สินค้า" href="/products" />
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-            {navCategories.map((category) => (
-              <Link key={category.id} href={category.id === "builder" ? "/builder" : `/products?cat=${category.id}`} className={`group rounded-[18px] border p-5 text-center transition hover:-translate-y-1 hover:shadow-xl ${category.feature ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white"}`}>
-                <div className={`mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl ${category.feature ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-950 group-hover:bg-blue-600 group-hover:text-white"}`}>
+            {navCategories.slice(0, 12).map((category) => (
+              <Link
+                key={category.id}
+                href={category.id === "builder" ? "/builder" : `/products?cat=${category.id}`}
+                className={`group rounded-lg border p-4 text-center transition hover:-translate-y-1 hover:shadow-lg ${
+                  category.feature ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white"
+                }`}
+              >
+                <div
+                  className={`mx-auto mb-3 grid h-12 w-12 place-items-center rounded-lg ${
+                    category.feature ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-950 group-hover:bg-blue-600 group-hover:text-white"
+                  }`}
+                >
                   <CategoryIcon name={category.icon} />
                 </div>
                 <div className="font-medium">{category.name}</div>
-                <div className="mono mt-0.5 text-[10px] tracking-widest opacity-55">{category.en}</div>
+                <div className="mono mt-1 text-[10px] tracking-widest opacity-55">{category.en}</div>
               </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="pb-20">
-        <div className="wrap">
-          <SectionHead eyebrow="คัดมาเพื่อคุณ" title="สินค้าแนะนำ" href="/products" />
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {featured.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+              ))}
           </div>
         </div>
       </section>
@@ -93,14 +90,52 @@ export default async function HomePage() {
   );
 }
 
-function SectionHead({ eyebrow, title, href }: { eyebrow: string; title: string; href: string }) {
+async function loadHomeData() {
+  try {
+    const [categories, products] = await Promise.all([getCategories(), getProducts()]);
+    return { categories, products, dbUnavailable: false };
+  } catch {
+    return { categories: [] as Category[], products: [] as Product[], dbUnavailable: true };
+  }
+}
+
+function PromoPanel({
+  title,
+  eyebrow,
+  text,
+  href,
+  cta,
+  icon,
+}: {
+  title: string;
+  eyebrow: string;
+  text: string;
+  href: string;
+  cta: string;
+  icon: React.ReactNode;
+}) {
   return (
-    <div className="mb-9 flex items-end justify-between gap-5">
+    <Link href={href} className="group flex h-full flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-xl sm:p-5">
       <div>
-        <p className="mono text-xs uppercase tracking-[.18em] text-blue-700">{eyebrow}</p>
-        <h2 className="mt-3 text-3xl font-semibold tracking-tight">{title}</h2>
+        <div className="flex items-center justify-between gap-4">
+          <p className="mono text-xs uppercase tracking-[.16em] text-blue-700">{eyebrow}</p>
+          <span className="grid h-9 w-9 place-items-center rounded-lg bg-blue-50 text-blue-700">{icon}</span>
+        </div>
+        <h2 className="mt-4 max-w-md text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">{title}</h2>
+        <p className="mt-3 max-w-lg text-xs leading-5 text-slate-600 sm:text-sm sm:leading-6">{text}</p>
       </div>
-      <Link href={href} className="hidden rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium md:inline-flex">
+      <span className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-slate-950">
+        {cta} <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+      </span>
+    </Link>
+  );
+}
+
+function SectionHead({ title, href }: { title: string; href: string }) {
+  return (
+    <div className="mb-7 flex items-end justify-between gap-5">
+      <h2 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">{title}</h2>
+      <Link href={href} className="hidden rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-600 hover:text-blue-700 md:inline-flex">
         ดูทั้งหมด
       </Link>
     </div>
