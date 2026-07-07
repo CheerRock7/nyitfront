@@ -1,13 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-
-type OrderCustomer = {
-  name?: string;
-  email?: string;
-  username?: string;
-  phone?: string;
-  address?: string;
-};
+import { cleanText, getSessionUser } from "@/lib/storefront-auth";
 
 type OrderItem = {
   id?: string;
@@ -24,26 +17,16 @@ type OrderRow = {
   order_code: string;
 };
 
-function cleanText(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
-}
-
 export async function POST(request: Request) {
-  let body: { customer?: OrderCustomer; items?: OrderItem[] };
+  let body: { items?: OrderItem[] };
 
   try {
-    body = (await request.json()) as { customer?: OrderCustomer; items?: OrderItem[] };
+    body = (await request.json()) as { items?: OrderItem[] };
   } catch {
     return NextResponse.json({ error: "ข้อมูลคำสั่งซื้อไม่ถูกต้อง" }, { status: 400 });
   }
 
-  const customer = body.customer;
   const rawItems = Array.isArray(body.items) ? body.items : [];
-
-  if (!customer?.name || !customer.email) {
-    return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อนสั่งซื้อ" }, { status: 401 });
-  }
-
   const items = rawItems
     .map((item) => ({
       id: cleanText(item.id),
@@ -60,29 +43,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "กรุณาเลือกสินค้าก่อนสั่งซื้อ" }, { status: 400 });
   }
 
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const identifier = cleanText(customer.username) || cleanText(customer.email);
-
   try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อนสั่งซื้อ" }, { status: 401 });
+    }
+
+    const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const identifier = cleanText(user.username) || cleanText(user.email);
     const rows = await query<OrderRow>(
       `INSERT INTO storefront_orders
         (customer_name, customer_identifier, customer_phone, customer_address, total, items)
        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
        RETURNING id, order_code`,
       [
-        cleanText(customer.name),
+        cleanText(user.name),
         identifier,
-        cleanText(customer.phone) || null,
-        cleanText(customer.address) || null,
+        cleanText(user.phone) || null,
+        cleanText(user.address) || null,
         total,
         JSON.stringify(items),
       ],
     );
 
+    await query("DELETE FROM storefront_carts WHERE user_id = $1", [user.id]).catch(() => undefined);
     return NextResponse.json({ ok: true, orderId: rows[0]?.id, orderCode: rows[0]?.order_code });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    if (/storefront_orders/i.test(message) || /permission denied/i.test(message)) {
+    if (/storefront_orders|storefront_users|storefront_sessions|permission denied/i.test(message)) {
       return NextResponse.json({ error: "ยังไม่ได้ตั้งค่าตารางคำสั่งซื้อในฐานข้อมูล" }, { status: 503 });
     }
     return NextResponse.json({ error: "บันทึกคำสั่งซื้อไม่สำเร็จ" }, { status: 500 });

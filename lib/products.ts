@@ -27,6 +27,7 @@ type ProductRow = {
   price: string;
   model: string | null;
   notes: string | null;
+  serial_note: string | null;
   description: string | null;
   specs: [string, string][] | null;
   image_url: string | null;
@@ -48,6 +49,7 @@ function toProduct(row: ProductRow): Product {
     brand: row.brand ?? "",
     price: Number(row.price),
     spec: row.model || row.notes || "",
+    notes: row.serial_note ?? (String(row.id).startsWith("bundle-") ? row.notes ?? undefined : undefined),
     description: row.description ?? undefined,
     specs: row.specs ?? undefined,
     glyph: meta?.icon ?? slug ?? "set",
@@ -91,6 +93,7 @@ async function getBundleProducts(bundleId?: string): Promise<Product[]> {
             ROUND(COALESCE(SUM(s.price), 0) * (1 - COALESCE(b.discount_pct, 0) / 100), 2)::text AS price,
             (COUNT(p.id)::text || ' รายการในชุด') AS model,
             STRING_AGG(p.name, ' + ' ORDER BY p.id) AS notes,
+            NULL::text AS serial_note,
             NULL::text AS description,
             NULL::jsonb AS specs,
             (ARRAY_AGG(s.image_url ORDER BY p.id)
@@ -123,11 +126,13 @@ export async function getProducts(): Promise<Product[]> {
   // price/image_url.
   const rows = await query<ProductRow>(
     `SELECT p.id, p.name, c.slug AS cat, c.name AS cat_name,
-            p.brand, p.model, p.notes, p.description, p.specs, s.price, s.image_url, s.image_urls
+            p.brand, p.model, p.notes, s.serial_note, p.description, p.specs, s.price, s.image_url, s.image_urls
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        JOIN LATERAL (
          SELECT MIN(ps.price) AS price,
+                (ARRAY_AGG(NULLIF(ps.note, '') ORDER BY ps.price, ps.id)
+                   FILTER (WHERE ps.note IS NOT NULL AND ps.note <> ''))[1] AS serial_note,
                 (ARRAY_AGG(ps.image_url ORDER BY ps.price, ps.id)
                    FILTER (WHERE ps.image_url IS NOT NULL))[1] AS image_url,
                 ARRAY(
@@ -167,11 +172,13 @@ export async function getProductById(id: string): Promise<Product | null> {
 
   const rows = await query<ProductRow>(
     `SELECT p.id, p.name, c.slug AS cat, c.name AS cat_name,
-            p.brand, p.model, p.notes, p.description, p.specs, s.price, s.image_url, s.image_urls
+            p.brand, p.model, p.notes, s.serial_note, p.description, p.specs, s.price, s.image_url, s.image_urls
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        JOIN LATERAL (
          SELECT MIN(ps.price) AS price,
+                (ARRAY_AGG(NULLIF(ps.note, '') ORDER BY ps.price, ps.id)
+                   FILTER (WHERE ps.note IS NOT NULL AND ps.note <> ''))[1] AS serial_note,
                 (ARRAY_AGG(ps.image_url ORDER BY ps.price, ps.id)
                    FILTER (WHERE ps.image_url IS NOT NULL))[1] AS image_url,
                 ARRAY(

@@ -3,7 +3,6 @@
 import { useEffect, useState, type ChangeEvent } from "react";
 import { ImagePlus, RotateCcw, Save, Upload } from "lucide-react";
 
-const STORAGE_KEY = "nyit_promotion_banner_v1";
 const CHANGE_EVENT = "nyit-promotion-banner-change";
 const DEFAULT_PROMOTION = {
   src: "/promo-default.svg",
@@ -19,47 +18,50 @@ type PromotionBanner = {
 
 export const PROMOTION_IMAGE_SIZE = "2048 x 715 px";
 
-function readPromotionBanner(): PromotionBanner {
-  if (typeof window === "undefined") return DEFAULT_PROMOTION;
+async function readPromotionBanner(): Promise<PromotionBanner> {
   try {
-    const value = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "null") as Partial<PromotionBanner> | null;
-    return {
-      src: value?.src || DEFAULT_PROMOTION.src,
-      link: value?.link || DEFAULT_PROMOTION.link,
-      alt: value?.alt || DEFAULT_PROMOTION.alt,
-    };
+    const response = await fetch("/api/settings/promotion-banner", { cache: "no-store" });
+    const payload = (await response.json().catch(() => null)) as { banner?: PromotionBanner } | null;
+    return payload?.banner ?? DEFAULT_PROMOTION;
   } catch {
     return DEFAULT_PROMOTION;
   }
-}
-
-function writePromotionBanner(value: PromotionBanner) {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-  window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
 export function usePromotionBanner() {
   const [banner, setBanner] = useState<PromotionBanner>(DEFAULT_PROMOTION);
 
   useEffect(() => {
-    const sync = () => setBanner(readPromotionBanner());
-    sync();
-    window.addEventListener("storage", sync);
+    let active = true;
+    const sync = async () => {
+      const next = await readPromotionBanner();
+      if (active) setBanner(next);
+    };
+    void sync();
     window.addEventListener(CHANGE_EVENT, sync);
     return () => {
-      window.removeEventListener("storage", sync);
+      active = false;
       window.removeEventListener(CHANGE_EVENT, sync);
     };
   }, []);
 
-  const save = (next: PromotionBanner) => {
-    setBanner(next);
-    writePromotionBanner(next);
+  const save = async (next: PromotionBanner) => {
+    const response = await fetch("/api/settings/promotion-banner", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(next),
+    });
+    const payload = (await response.json().catch(() => null)) as { banner?: PromotionBanner; error?: string } | null;
+    if (!response.ok || !payload?.banner) throw new Error(payload?.error ?? "บันทึก banner ไม่สำเร็จ");
+    setBanner(payload.banner);
+    window.dispatchEvent(new Event(CHANGE_EVENT));
   };
 
-  const reset = () => {
-    setBanner(DEFAULT_PROMOTION);
-    window.localStorage.removeItem(STORAGE_KEY);
+  const reset = async () => {
+    const response = await fetch("/api/settings/promotion-banner", { method: "DELETE" });
+    const payload = (await response.json().catch(() => null)) as { banner?: PromotionBanner; error?: string } | null;
+    if (!response.ok || !payload?.banner) throw new Error(payload?.error ?? "รีเซ็ต banner ไม่สำเร็จ");
+    setBanner(payload.banner);
     window.dispatchEvent(new Event(CHANGE_EVENT));
   };
 
@@ -90,6 +92,8 @@ export function PromotionBannerEditor() {
   const [link, setLink] = useState(banner.link);
   const [alt, setAlt] = useState(banner.alt);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setSrc(banner.src);
@@ -97,9 +101,32 @@ export function PromotionBannerEditor() {
     setAlt(banner.alt);
   }, [banner]);
 
-  function submit() {
-    save({ src: src.trim() || DEFAULT_PROMOTION.src, link: link.trim(), alt: alt.trim() || DEFAULT_PROMOTION.alt });
-    setMessage("บันทึกรูปโปรโมชั่นแล้ว");
+  async function submit() {
+    setSaving(true);
+    setMessage("");
+    setError("");
+    try {
+      await save({ src: src.trim() || DEFAULT_PROMOTION.src, link: link.trim(), alt: alt.trim() || DEFAULT_PROMOTION.alt });
+      setMessage("บันทึก banner ลงฐานข้อมูลแล้ว");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "บันทึก banner ไม่สำเร็จ");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function resetBanner() {
+    setSaving(true);
+    setMessage("");
+    setError("");
+    try {
+      await reset();
+      setMessage("รีเซ็ต banner แล้ว");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "รีเซ็ต banner ไม่สำเร็จ");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function onFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -118,11 +145,14 @@ export function PromotionBannerEditor() {
         <div>
           <div className="flex items-center gap-2">
             <ImagePlus className="h-5 w-5 text-blue-700" />
-            <h2 className="text-lg font-semibold text-slate-950">รูปโปรโมชั่นหน้าแรก</h2>
+            <h2 className="text-lg font-semibold text-slate-950">รูปโปรโมชันหน้าแรก</h2>
           </div>
           <p className="mt-2 text-sm text-slate-500">ขนาดแนะนำ {PROMOTION_IMAGE_SIZE} ใช้ไฟล์ JPG, PNG, WebP หรือ URL รูปภาพ</p>
         </div>
-        {message ? <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p> : null}
+        <div className="grid gap-2">
+          {message ? <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p> : null}
+          {error ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+        </div>
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -150,11 +180,11 @@ export function PromotionBannerEditor() {
             <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={onFileChange} className="sr-only" />
           </label>
           <div className="grid grid-cols-2 gap-3">
-            <button type="button" onClick={submit} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700">
+            <button type="button" onClick={submit} disabled={saving} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300">
               <Save className="h-4 w-4" />
               บันทึก
             </button>
-            <button type="button" onClick={reset} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+            <button type="button" onClick={resetBanner} disabled={saving} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">
               <RotateCcw className="h-4 w-4" />
               ค่าเริ่มต้น
             </button>

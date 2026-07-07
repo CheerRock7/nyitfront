@@ -4,8 +4,15 @@ import { createContext, useContext } from "react";
 import type { Product } from "@/lib/data";
 
 export type CartLine = Product & { quantity: number };
-export type AuthUser = { name: string; email: string; username?: string; phone?: string; address?: string };
-export type StoredAccount = AuthUser & { password: string };
+export type AuthUser = {
+  id?: string;
+  name: string;
+  email: string;
+  username?: string;
+  phone?: string;
+  address?: string;
+  role?: "customer" | "admin";
+};
 export type AuthProfileInput = AuthUser & { password?: string };
 
 export type CartContextValue = {
@@ -20,10 +27,11 @@ export type CartContextValue = {
 
 export type AuthContextValue = {
   user: AuthUser | null;
-  login: (email: string, password: string) => boolean;
-  register: (name: string, email: string, password: string) => boolean;
-  updateProfile: (profile: AuthProfileInput) => { ok: boolean; error?: string };
-  logout: () => void;
+  loading: boolean;
+  login: (identifier: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  register: (name: string, identifier: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  updateProfile: (profile: AuthProfileInput) => Promise<{ ok: boolean; error?: string }>;
+  logout: () => Promise<void>;
 };
 
 export const CartContext = createContext<CartContextValue | null>(null);
@@ -41,10 +49,11 @@ const fallbackCartContext: CartContextValue = {
 
 const fallbackAuthContext: AuthContextValue = {
   user: null,
-  login: () => false,
-  register: () => false,
-  updateProfile: () => ({ ok: false, error: "ยังไม่พร้อมใช้งาน" }),
-  logout: () => {},
+  loading: false,
+  login: async () => ({ ok: false }),
+  register: async () => ({ ok: false }),
+  updateProfile: async () => ({ ok: false, error: "ยังไม่พร้อมใช้งาน" }),
+  logout: async () => {},
 };
 
 export function useCart() {

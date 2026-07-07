@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { requireAdminUser } from "@/lib/storefront-auth";
 
 type FeaturedRow = {
   product_id: string;
@@ -41,6 +42,9 @@ export async function PUT(request: Request) {
   const ids = cleanIds(body.ids);
 
   try {
+    const admin = await requireAdminUser();
+    if (!admin) return NextResponse.json({ error: "สำหรับ admin เท่านั้น" }, { status: 403 });
+
     if (!ids.length) {
       await query("DELETE FROM storefront_featured_products");
       return NextResponse.json({ ids: [] });

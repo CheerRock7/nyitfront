@@ -24,11 +24,11 @@ export function SettingsClient() {
     setAddress(user.address ?? "");
   }, [user]);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
     setError("");
-    const result = updateProfile({ name, email, phone, address, password });
+    const result = await updateProfile({ name, email, username: user?.username, phone, address, password });
     if (!result.ok) {
       setError(result.error ?? "บันทึกข้อมูลไม่สำเร็จ");
       return;

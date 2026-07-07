@@ -15,13 +15,8 @@ let featuredSaving = false;
 let featuredError = "";
 const featuredListeners = new Set<() => void>();
 
-function normalize(value?: string) {
-  return (value ?? "").trim().toLowerCase();
-}
-
-export function isAdminUser(user: { name?: string; email?: string; username?: string } | null) {
-  if (!user) return false;
-  return [user.username, user.email, user.name].map(normalize).includes("admin");
+export function isAdminUser(user: { name?: string; email?: string; username?: string; role?: string } | null) {
+  return user?.role === "admin";
 }
 
 function notifyFeaturedChange() {
