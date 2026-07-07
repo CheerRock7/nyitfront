@@ -15,6 +15,7 @@ export type CartContextValue = {
   addItem: (product: Product, quantity?: number) => void;
   setQuantity: (id: string, quantity: number) => void;
   openCart: () => void;
+  clearCart: () => void;
 };
 
 export type AuthContextValue = {
@@ -35,6 +36,7 @@ const fallbackCartContext: CartContextValue = {
   addItem: () => {},
   setQuantity: () => {},
   openCart: () => {},
+  clearCart: () => {},
 };
 
 const fallbackAuthContext: AuthContextValue = {

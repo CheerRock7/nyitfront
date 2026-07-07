@@ -108,6 +108,13 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
   const count = lines.reduce((sum, item) => sum + item.quantity, 0);
   const total = lines.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
+  const clearCart = () => {
+    setCart({});
+    setCartProducts({});
+    localStorage.removeItem("chub_cart_v2");
+    localStorage.removeItem("chub_cart_products_v1");
+  };
+
   const value: CartContextValue = {
     lines,
     total,
@@ -128,6 +135,7 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
     openCart() {
       setDrawerOpen(true);
     },
+    clearCart,
   };
 
   const authValue: AuthContextValue = {
@@ -193,8 +201,10 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
     },
     logout() {
       localStorage.removeItem("nyit_auth_user_v1");
+      clearCart();
       setUser(null);
       setAccountOpen(false);
+      setDrawerOpen(false);
     },
   };
 
@@ -419,11 +429,12 @@ function FooterList({ title, items }: { title: string; items: FooterItem[] }) {
 }
 
 function CartDrawer({ open, onClose, onRequireLogin }: { open: boolean; onClose: () => void; onRequireLogin: () => void }) {
-  const { lines, total, setQuantity } = useCart();
+  const { lines, total, setQuantity, clearCart } = useCart();
   const { user } = useAuth();
   const [notice, setNotice] = useState("");
+  const [checkingOut, setCheckingOut] = useState(false);
 
-  const checkout = () => {
+  const checkout = async () => {
     if (!lines.length) {
       setNotice("กรุณาเลือกสินค้าก่อนดำเนินการสั่งซื้อ");
       return;
@@ -433,7 +444,40 @@ function CartDrawer({ open, onClose, onRequireLogin }: { open: boolean; onClose:
       onRequireLogin();
       return;
     }
-    setNotice("พร้อมดำเนินการสั่งซื้อสำหรับบัญชี " + user.name);
+    setCheckingOut(true);
+    setNotice("");
+
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customer: user,
+          items: lines.map((item) => ({
+            id: item.id,
+            name: item.name,
+            brand: item.brand,
+            price: item.price,
+            quantity: item.quantity,
+            image: item.image,
+            category: item.catName ?? item.cat,
+          })),
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as { orderCode?: string; error?: string } | null;
+
+      if (!response.ok) {
+        setNotice(payload?.error ?? "บันทึกคำสั่งซื้อไม่สำเร็จ");
+        return;
+      }
+
+      clearCart();
+      setNotice(`บันทึกคำสั่งซื้อแล้ว เลขที่ ${payload?.orderCode ?? "-"}`);
+    } catch {
+      setNotice("เชื่อมต่อระบบคำสั่งซื้อไม่สำเร็จ");
+    } finally {
+      setCheckingOut(false);
+    }
   };
 
   return (
@@ -480,8 +524,8 @@ function CartDrawer({ open, onClose, onRequireLogin }: { open: boolean; onClose:
           <span className="mono text-2xl font-semibold">{baht(total)}</span>
         </div>
         {notice ? <p className="mb-3 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-700">{notice}</p> : null}
-        <button onClick={checkout} className="h-12 w-full rounded-full bg-blue-600 font-medium text-white shadow-lg shadow-blue-600/20">
-          {user ? "ดำเนินการสั่งซื้อ" : "เข้าสู่ระบบเพื่อสั่งซื้อ"}
+        <button onClick={checkout} disabled={checkingOut} className="h-12 w-full rounded-full bg-blue-600 font-medium text-white shadow-lg shadow-blue-600/20 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none">
+          {checkingOut ? "กำลังบันทึกคำสั่งซื้อ..." : user ? "ดำเนินการสั่งซื้อ" : "เข้าสู่ระบบเพื่อสั่งซื้อ"}
         </button>
       </div>
     </aside>
