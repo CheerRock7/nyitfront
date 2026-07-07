@@ -8,8 +8,12 @@ import { CategoryIcon } from "@/components/icons";
 import { useAuth } from "@/components/app-context";
 import { PromotionBannerEditor } from "@/components/promotion-banner";
 
-const STORAGE_KEY = "nyit_admin_featured_product_ids_v1";
 const CHANGE_EVENT = "nyit-admin-featured-change";
+let featuredIdsCache: string[] = [];
+let featuredLoaded = false;
+let featuredSaving = false;
+let featuredError = "";
+const featuredListeners = new Set<() => void>();
 
 function normalize(value?: string) {
   return (value ?? "").trim().toLowerCase();
@@ -20,53 +24,82 @@ export function isAdminUser(user: { name?: string; email?: string; username?: st
   return [user.username, user.email, user.name].map(normalize).includes("admin");
 }
 
-function readFeaturedIds() {
-  if (typeof window === "undefined") return [];
+function notifyFeaturedChange() {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(CHANGE_EVENT));
+  for (const listener of featuredListeners) listener();
+}
+
+async function loadFeaturedIds() {
   try {
-    const value = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "[]");
-    return Array.isArray(value) ? value.map(String) : [];
-  } catch {
-    return [];
+    const response = await fetch("/api/admin/featured", { cache: "no-store" });
+    const payload = (await response.json().catch(() => null)) as { ids?: string[]; error?: string } | null;
+    if (!response.ok) throw new Error(payload?.error ?? "โหลดสินค้าติดดาวไม่สำเร็จ");
+    featuredIdsCache = Array.isArray(payload?.ids) ? payload.ids.map(String) : [];
+    featuredError = "";
+  } catch (error) {
+    featuredError = error instanceof Error ? error.message : "โหลดสินค้าติดดาวไม่สำเร็จ";
+  } finally {
+    featuredLoaded = true;
+    notifyFeaturedChange();
   }
 }
 
-function writeFeaturedIds(ids: string[]) {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
-  window.dispatchEvent(new Event(CHANGE_EVENT));
+async function saveFeaturedIds(ids: string[]) {
+  const previous = featuredIdsCache;
+  featuredIdsCache = ids;
+  featuredSaving = true;
+  featuredError = "";
+  notifyFeaturedChange();
+
+  try {
+    const response = await fetch("/api/admin/featured", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    const payload = (await response.json().catch(() => null)) as { ids?: string[]; error?: string } | null;
+    if (!response.ok) throw new Error(payload?.error ?? "บันทึกสินค้าติดดาวไม่สำเร็จ");
+    featuredIdsCache = Array.isArray(payload?.ids) ? payload.ids.map(String) : ids;
+  } catch (error) {
+    featuredIdsCache = previous;
+    featuredError = error instanceof Error ? error.message : "บันทึกสินค้าติดดาวไม่สำเร็จ";
+  } finally {
+    featuredSaving = false;
+    featuredLoaded = true;
+    notifyFeaturedChange();
+  }
 }
 
 export function useAdminFeaturedIds() {
-  const [ids, setIds] = useState<string[]>([]);
+  const [, refresh] = useState(0);
 
   useEffect(() => {
-    const sync = () => setIds(readFeaturedIds());
-    sync();
-    window.addEventListener("storage", sync);
+    const sync = () => refresh((value) => value + 1);
+    featuredListeners.add(sync);
     window.addEventListener(CHANGE_EVENT, sync);
+    if (!featuredLoaded) void loadFeaturedIds();
     return () => {
-      window.removeEventListener("storage", sync);
+      featuredListeners.delete(sync);
       window.removeEventListener(CHANGE_EVENT, sync);
     };
   }, []);
 
   const toggle = (productId: string) => {
-    const next = ids.includes(productId) ? ids.filter((id) => id !== productId) : [...ids, productId];
-    setIds(next);
-    writeFeaturedIds(next);
+    const next = featuredIdsCache.includes(productId) ? featuredIdsCache.filter((id) => id !== productId) : [...featuredIdsCache, productId];
+    void saveFeaturedIds(next);
   };
 
   const remove = (productId: string) => {
-    const next = ids.filter((id) => id !== productId);
-    setIds(next);
-    writeFeaturedIds(next);
+    const next = featuredIdsCache.filter((id) => id !== productId);
+    void saveFeaturedIds(next);
   };
 
-  return { ids, toggle, remove };
+  return { ids: featuredIdsCache, toggle, remove, loading: !featuredLoaded, saving: featuredSaving, error: featuredError };
 }
 
 export function AdminFavoriteButton({ product, className = "" }: { product: Product; className?: string }) {
   const { user } = useAuth();
-  const { ids, toggle } = useAdminFeaturedIds();
+  const { ids, toggle, saving } = useAdminFeaturedIds();
   const isAdmin = isAdminUser(user);
   const active = ids.includes(product.id);
 
@@ -75,6 +108,7 @@ export function AdminFavoriteButton({ product, className = "" }: { product: Prod
   return (
     <button
       type="button"
+      disabled={saving}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -208,7 +242,7 @@ function FeaturedProductTile({ product }: { product: Product }) {
 
 export function AdminDashboardClient({ products }: { products: Product[] }) {
   const { user } = useAuth();
-  const { ids, toggle, remove } = useAdminFeaturedIds();
+  const { ids, toggle, remove, loading, saving, error } = useAdminFeaturedIds();
   const [query, setQuery] = useState("");
   const [section, setSection] = useState<"featured" | "banner">("featured");
   const admin = isAdminUser(user);
@@ -274,10 +308,12 @@ export function AdminDashboardClient({ products }: { products: Product[] }) {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold text-slate-950">ติดดาวแล้ว</h2>
-                <p className="text-sm text-slate-500">{featured.length} รายการ</p>
+                <p className="text-sm text-slate-500">{loading ? "กำลังโหลด..." : `${featured.length} รายการ`}</p>
               </div>
               <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
             </div>
+            {error ? <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+            {saving ? <p className="mt-4 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700">กำลังบันทึกสินค้าติดดาว...</p> : null}
             <div className="mt-5 space-y-3">
               {featured.length ? (
                 featured.map((product) => (
@@ -289,6 +325,7 @@ export function AdminDashboardClient({ products }: { products: Product[] }) {
                     </div>
                     <button
                       type="button"
+                      disabled={saving}
                       onClick={() => remove(product.id)}
                       className="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600"
                       aria-label="เอาออก"
@@ -323,6 +360,7 @@ export function AdminDashboardClient({ products }: { products: Product[] }) {
                   <button
                     key={product.id}
                     type="button"
+                    disabled={saving}
                     data-testid="admin-product-toggle"
                     onClick={() => toggle(product.id)}
                     className={`grid grid-cols-[72px_1fr_auto] items-center gap-4 rounded-lg border p-3 text-left transition ${

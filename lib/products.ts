@@ -30,6 +30,7 @@ type ProductRow = {
   description: string | null;
   specs: [string, string][] | null;
   image_url: string | null;
+  image_urls: string[] | null;
 };
 
 type BundleRow = ProductRow;
@@ -37,6 +38,7 @@ type BundleRow = ProductRow;
 function toProduct(row: ProductRow): Product {
   const slug = row.cat ?? "";
   const meta = categoryMeta[slug];
+  const images = [...new Set([...(row.image_urls ?? []), row.image_url].map((image) => imageUrl(image)).filter(Boolean))] as string[];
   return {
     id: String(row.id),
     name: row.name,
@@ -49,7 +51,8 @@ function toProduct(row: ProductRow): Product {
     description: row.description ?? undefined,
     specs: row.specs ?? undefined,
     glyph: meta?.icon ?? slug ?? "set",
-    image: imageUrl(row.image_url),
+    image: images[0],
+    images: images.length ? images : undefined,
   };
 }
 
@@ -91,7 +94,8 @@ async function getBundleProducts(bundleId?: string): Promise<Product[]> {
             NULL::text AS description,
             NULL::jsonb AS specs,
             (ARRAY_AGG(s.image_url ORDER BY p.id)
-              FILTER (WHERE s.image_url IS NOT NULL))[1] AS image_url
+              FILTER (WHERE s.image_url IS NOT NULL))[1] AS image_url,
+            ARRAY_REMOVE(ARRAY_AGG(s.image_url ORDER BY p.id), NULL) AS image_urls
        FROM bundles b
        LEFT JOIN bundle_items bi ON bi.bundle_id = b.id
        LEFT JOIN products p ON p.id = bi.product_id
@@ -119,13 +123,30 @@ export async function getProducts(): Promise<Product[]> {
   // price/image_url.
   const rows = await query<ProductRow>(
     `SELECT p.id, p.name, c.slug AS cat, c.name AS cat_name,
-            p.brand, p.model, p.notes, p.description, p.specs, s.price, s.image_url
+            p.brand, p.model, p.notes, p.description, p.specs, s.price, s.image_url, s.image_urls
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        JOIN LATERAL (
          SELECT MIN(ps.price) AS price,
                 (ARRAY_AGG(ps.image_url ORDER BY ps.price, ps.id)
-                   FILTER (WHERE ps.image_url IS NOT NULL))[1] AS image_url
+                   FILTER (WHERE ps.image_url IS NOT NULL))[1] AS image_url,
+                ARRAY(
+                  SELECT gallery.image
+                    FROM (
+                      SELECT ps2.image_url AS image, ps2.price, ps2.id AS serial_id, 0 AS image_order
+                        FROM product_serials ps2
+                       WHERE ps2.product_id = p.id AND ps2.status = 'in_stock' AND ps2.image_url IS NOT NULL
+                      UNION ALL
+                      SELECT img.image, ps2.price, ps2.id AS serial_id, 1 AS image_order
+                        FROM product_serials ps2
+                        CROSS JOIN LATERAL jsonb_array_elements_text(
+                          CASE WHEN jsonb_typeof(ps2.images) = 'array' THEN ps2.images ELSE '[]'::jsonb END
+                        ) AS img(image)
+                       WHERE ps2.product_id = p.id AND ps2.status = 'in_stock'
+                    ) gallery
+                   WHERE gallery.image IS NOT NULL AND gallery.image <> ''
+                   ORDER BY gallery.price, gallery.serial_id, gallery.image_order
+                ) AS image_urls
            FROM product_serials ps
           WHERE ps.product_id = p.id AND ps.status = 'in_stock'
           GROUP BY ps.product_id
@@ -146,13 +167,30 @@ export async function getProductById(id: string): Promise<Product | null> {
 
   const rows = await query<ProductRow>(
     `SELECT p.id, p.name, c.slug AS cat, c.name AS cat_name,
-            p.brand, p.model, p.notes, p.description, p.specs, s.price, s.image_url
+            p.brand, p.model, p.notes, p.description, p.specs, s.price, s.image_url, s.image_urls
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        JOIN LATERAL (
          SELECT MIN(ps.price) AS price,
                 (ARRAY_AGG(ps.image_url ORDER BY ps.price, ps.id)
-                   FILTER (WHERE ps.image_url IS NOT NULL))[1] AS image_url
+                   FILTER (WHERE ps.image_url IS NOT NULL))[1] AS image_url,
+                ARRAY(
+                  SELECT gallery.image
+                    FROM (
+                      SELECT ps2.image_url AS image, ps2.price, ps2.id AS serial_id, 0 AS image_order
+                        FROM product_serials ps2
+                       WHERE ps2.product_id = p.id AND ps2.status = 'in_stock' AND ps2.image_url IS NOT NULL
+                      UNION ALL
+                      SELECT img.image, ps2.price, ps2.id AS serial_id, 1 AS image_order
+                        FROM product_serials ps2
+                        CROSS JOIN LATERAL jsonb_array_elements_text(
+                          CASE WHEN jsonb_typeof(ps2.images) = 'array' THEN ps2.images ELSE '[]'::jsonb END
+                        ) AS img(image)
+                       WHERE ps2.product_id = p.id AND ps2.status = 'in_stock'
+                    ) gallery
+                   WHERE gallery.image IS NOT NULL AND gallery.image <> ''
+                   ORDER BY gallery.price, gallery.serial_id, gallery.image_order
+                ) AS image_urls
            FROM product_serials ps
           WHERE ps.product_id = p.id AND ps.status = 'in_stock'
           GROUP BY ps.product_id

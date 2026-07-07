@@ -26,6 +26,7 @@ export type Product = {
   specs?: [string, string][]; // structured spec sheet [[key, value], ...]
   glyph: string;
   image?: string; // absolute image URL when available
+  images?: string[]; // all product gallery images when available
   rating?: number;
 };
 

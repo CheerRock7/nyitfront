@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ShoppingCart } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ShoppingCart } from "lucide-react";
 import { baht, type Product } from "@/lib/data";
 import { CategoryIcon } from "@/components/icons";
 import { useCart } from "@/components/app-context";
@@ -23,18 +24,7 @@ export function ProductDetailClient({ product, related }: { product: Product; re
       </section>
 
       <section className="wrap grid gap-8 py-10 lg:grid-cols-[1fr_460px]">
-        <div className="self-start overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
-          <div className="relative grid place-items-center bg-slate-100 p-6">
-            <div className="absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_30%,rgba(37,99,235,.13),transparent_70%)]" />
-            <AdminFavoriteButton product={product} className="absolute right-4 top-4 z-10" />
-            {product.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={product.image} alt={product.name} className="relative max-h-[560px] max-w-full object-contain" />
-            ) : (
-              <CategoryIcon name={product.glyph} className="relative h-32 w-32 text-slate-900/15" />
-            )}
-          </div>
-        </div>
+        <ProductGallery product={product} />
 
         <aside className="flex min-h-[520px] flex-col rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm lg:sticky lg:top-24 lg:self-start">
           <div>
@@ -94,5 +84,114 @@ export function ProductDetailClient({ product, related }: { product: Product; re
         )}
       </section>
     </main>
+  );
+}
+
+function ProductGallery({ product }: { product: Product }) {
+  const images = useMemo(() => [...new Set(product.images?.length ? product.images : product.image ? [product.image] : [])], [product.image, product.images]);
+  const [active, setActive] = useState(0);
+  const [direction, setDirection] = useState<1 | -1>(1);
+  const hasImages = images.length > 0;
+  const hasMultiple = images.length > 1;
+
+  const move = (direction: 1 | -1) => {
+    if (!hasMultiple) return;
+    setDirection(direction);
+    setActive((current) => (current + direction + images.length) % images.length);
+  };
+
+  const selectImage = (index: number) => {
+    if (index === active) return;
+    setDirection(index > active ? 1 : -1);
+    setActive(index);
+  };
+
+  return (
+    <div className="self-start rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm transition-shadow duration-300 hover:shadow-md">
+      <div className="relative grid min-h-[360px] place-items-center overflow-hidden rounded-[18px] bg-slate-100 p-4 md:min-h-[520px]">
+        <div className="absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_30%,rgba(37,99,235,.13),transparent_70%)]" />
+        <AdminFavoriteButton product={product} className="absolute right-4 top-4 z-20" />
+        {hasMultiple ? (
+          <>
+            <button
+              type="button"
+              onClick={() => move(-1)}
+              className="absolute left-3 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-slate-700 shadow-sm ring-1 ring-slate-200 transition duration-200 hover:scale-105 hover:bg-white hover:text-blue-700 active:scale-95"
+              aria-label="รูปก่อนหน้า"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => move(1)}
+              className="absolute right-3 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-slate-700 shadow-sm ring-1 ring-slate-200 transition duration-200 hover:scale-105 hover:bg-white hover:text-blue-700 active:scale-95"
+              aria-label="รูปถัดไป"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </>
+        ) : null}
+        {hasImages ? (
+          <div className="relative z-10 h-[300px] w-full md:h-[480px]">
+            {images.map((image, index) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={image}
+                src={image}
+                alt={product.name}
+                className={`absolute inset-0 h-full w-full object-contain transition-[opacity,transform,filter] duration-500 ease-out ${
+                  index === active
+                    ? "translate-x-0 scale-100 opacity-100 blur-0"
+                    : direction === 1
+                      ? "-translate-x-6 scale-[.98] opacity-0 blur-[2px]"
+                      : "translate-x-6 scale-[.98] opacity-0 blur-[2px]"
+                }`}
+              />
+            ))}
+          </div>
+        ) : (
+          <CategoryIcon name={product.glyph} className="relative h-32 w-32 text-slate-900/15 transition duration-300" />
+        )}
+      </div>
+
+      {hasImages ? (
+        <div className="mt-4 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => move(-1)}
+            disabled={!hasMultiple}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-500 transition duration-200 hover:scale-105 hover:border-blue-300 hover:text-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:scale-100"
+            aria-label="รูปก่อนหน้า"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <div className="flex min-w-0 flex-1 gap-3 overflow-x-auto pb-1">
+            {images.map((image, index) => (
+              <button
+                key={`${image}-${index}`}
+                type="button"
+                onClick={() => selectImage(index)}
+                className={`grid h-20 w-24 shrink-0 place-items-center overflow-hidden rounded-xl border bg-slate-100 transition duration-300 ease-out ${
+                  index === active ? "scale-105 border-blue-500 shadow-md ring-4 ring-blue-100" : "border-slate-200 hover:-translate-y-0.5 hover:border-blue-300"
+                }`}
+                aria-label={`ดูรูปสินค้า ${index + 1}`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={image} alt={`${product.name} ${index + 1}`} className="h-full w-full object-cover transition duration-300" />
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => move(1)}
+            disabled={!hasMultiple}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-500 transition duration-200 hover:scale-105 hover:border-blue-300 hover:text-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:scale-100"
+            aria-label="รูปถัดไป"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
