@@ -71,9 +71,9 @@ export function usePromotionBanner() {
 export function PromotionImageBanner() {
   const { banner } = usePromotionBanner();
   const content = (
-    <div className="relative aspect-[2048/715] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-950 shadow-sm transition hover:-translate-y-1 hover:shadow-xl lg:aspect-auto lg:h-full">
+    <div className="relative aspect-[2048/715] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-[0_24px_60px_-30px_rgba(2,6,23,0.5)] transition hover:-translate-y-1 hover:shadow-[0_30px_70px_-28px_rgba(2,6,23,0.55)]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={banner.src} alt={banner.alt} className="absolute inset-0 h-full w-full object-cover" data-testid="promotion-banner-image" />
+      <img src={banner.src} alt={banner.alt} className="absolute inset-0 h-full w-full object-contain object-center" data-testid="promotion-banner-image" />
     </div>
   );
 
@@ -158,7 +158,7 @@ export function PromotionBannerEditor() {
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-950">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src || DEFAULT_PROMOTION.src} alt={alt || DEFAULT_PROMOTION.alt} className="aspect-[2048/715] w-full object-cover" />
+          <img src={src || DEFAULT_PROMOTION.src} alt={alt || DEFAULT_PROMOTION.alt} className="aspect-[2048/715] w-full object-contain object-center" />
         </div>
 
         <div className="grid content-start gap-3">

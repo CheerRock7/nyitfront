@@ -8,6 +8,10 @@ dist/
 build/
 .vite/
 
+# Generated caches (not source)
+*.tsbuildinfo
+next-env.d.ts
+
 # Logs
 *.log
 npm-debug.log*
@@ -32,6 +36,9 @@ Desktop.ini
 *.temp
 .cache/
 coverage/
+
+# Design scratch / throwaway mockups
+mockups/
 
 # Local handoff source material
 project/

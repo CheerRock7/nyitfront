@@ -75,3 +75,777 @@ button {
     padding-inline: 18px;
   }
 }
+
+/* =========================================================================
+   Homepage redesign — dark hero → frosted glass band → white sheet.
+   Everything scoped under `.home` so no other page is affected.
+   ========================================================================= */
+.home {
+  background: #f5f6f8;
+  /* Tuck the dark hero up under the sticky (transparent) navbar so the nav
+     blends over the hero instead of over the light page background. The header
+     is 72px tall (64px on mobile). */
+  margin-top: -72px;
+}
+@media (max-width: 768px) {
+  .home {
+    margin-top: -64px;
+  }
+}
+.home a:focus-visible {
+  outline: 2px solid #93c0ff;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* ---- layer 1: dark hero zone ------------------------------------------- */
+.home-hero-zone {
+  position: relative;
+  z-index: 1;
+  color: #fff;
+  /* clear the 72px navbar that now overlaps the top of this zone */
+  padding-top: 72px;
+  padding-bottom: 8px;
+  background:
+    radial-gradient(52% 44% at 82% 12%, rgba(37, 99, 235, 0.34), transparent 60%),
+    radial-gradient(30% 26% at 3% 28%, rgba(16, 185, 129, 0.14), transparent 64%),
+    linear-gradient(180deg, #070a14, #0a0f1c);
+}
+.home-hero-zone::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(148, 163, 184, 1) 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: 0.05;
+  -webkit-mask-image: radial-gradient(70% 70% at 60% 30%, #000, transparent 75%);
+  mask-image: radial-gradient(70% 70% at 60% 30%, #000, transparent 75%);
+}
+
+.home-hero {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: center;
+  /* fill the first screen (72px nav + 8px zone padding accounted for) */
+  min-height: calc(100vh - 80px);
+  min-height: calc(100svh - 80px);
+  padding: 32px 0 40px;
+}
+@media (max-width: 960px) {
+  .home-hero {
+    grid-template-columns: 1fr;
+    gap: 48px;
+    padding: 24px 0 48px;
+    min-height: calc(100vh - 72px);
+    min-height: calc(100svh - 72px);
+  }
+}
+@media (max-width: 768px) {
+  .home-hero-zone {
+    padding-top: 64px;
+  }
+}
+
+.home .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #93c0ff;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(147, 192, 255, 0.25);
+  background: rgba(37, 99, 235, 0.16);
+}
+.home-hero h1 {
+  font-size: clamp(32px, 4.4vw, 56px);
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  margin: 22px 0 0;
+}
+.home-hero h1 .grad {
+  background: linear-gradient(100deg, #2563eb, #0ea5e9 55%, #059669);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.home-hero .lead {
+  margin: 18px 0 0;
+  font-size: 16px;
+  line-height: 1.7;
+  max-width: 46ch;
+  color: #9aa6bd;
+}
+.home-hero .actions {
+  margin-top: 40px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+/* the จัดสเปกคอม call-to-action */
+.cta-build {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px 14px 14px;
+  border-radius: 18px;
+  text-decoration: none;
+  color: #fff;
+  overflow: hidden;
+  background: linear-gradient(120deg, #1d4ed8, #2563eb 42%, #06b6d4);
+  box-shadow: 0 18px 40px -14px rgba(37, 99, 235, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease;
+}
+.cta-build::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  transform: skewX(-18deg);
+  transition: left 0.6s ease;
+}
+.cta-build:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 26px 52px -14px rgba(37, 99, 235, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.cta-build:hover::after {
+  left: 120%;
+}
+.cta-build .cta-ico {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.16);
+  flex: none;
+}
+.cta-build .cta-txt {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  text-align: left;
+}
+.cta-build .cta-txt b {
+  font-size: 16px;
+  font-weight: 600;
+}
+.cta-build .cta-txt small {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 2px;
+}
+.cta-build .cta-arr {
+  margin-left: 4px;
+  transition: transform 0.3s ease;
+}
+.cta-build:hover .cta-arr {
+  transform: translateX(5px);
+}
+
+/* ---- fanned category cards --------------------------------------------- */
+.fanwrap {
+  position: relative;
+  height: 440px;
+  display: grid;
+  place-items: center;
+}
+@media (max-width: 960px) {
+  .fanwrap {
+    height: 400px;
+  }
+}
+.fan {
+  position: relative;
+  width: 280px;
+  height: 360px;
+}
+/* keep the tilted stack inside narrow phone viewports (no hover spread on touch) */
+@media (max-width: 640px) {
+  .fan {
+    transform: scale(0.86);
+  }
+}
+@media (max-width: 400px) {
+  .fan {
+    transform: scale(0.76);
+  }
+}
+.fan-card {
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  background: #0b1020;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 30px 60px -24px rgba(2, 6, 23, 0.6);
+  overflow: hidden;
+  text-decoration: none;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.5s ease;
+  will-change: transform;
+}
+.fan-card .glow {
+  position: absolute;
+  inset: 0;
+  opacity: 0.85;
+  background: radial-gradient(75% 80% at 82% 8%, var(--c), transparent 58%);
+}
+.fan-card .wm {
+  position: absolute;
+  right: -16px;
+  bottom: -22px;
+  color: var(--c);
+  opacity: 0.22;
+}
+.fan-card .top {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.fan-card .tag {
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--cl);
+}
+.fan-card .badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--cl);
+}
+.fan-card h3 {
+  position: relative;
+  margin: auto 0 0;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.fan-card .sub {
+  position: relative;
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: #9aa6bd;
+  max-width: 22ch;
+}
+.fan-card .meta {
+  position: relative;
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+}
+.fan-card .pill {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.fan-card .pill b {
+  color: var(--cl);
+  font-family: var(--font-ibm-mono), ui-monospace, monospace;
+}
+.fan-card .go {
+  position: relative;
+  margin-top: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cl);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+/* base stacked / overlapping tilt */
+.fan-card.back {
+  --c: #7c3aed88;
+  --cl: #c4b5fd;
+  z-index: 1;
+  transform: translateX(-46px) translateY(10px) rotate(-11deg) scale(0.94);
+}
+.fan-card.mid {
+  --c: #05966988;
+  --cl: #6ee7b7;
+  z-index: 3;
+  transform: translateX(0) translateY(0) rotate(-1deg) scale(1);
+}
+.fan-card.front {
+  --c: #2563eb99;
+  --cl: #93c0ff;
+  z-index: 2;
+  transform: translateX(46px) translateY(14px) rotate(9deg) scale(0.95);
+}
+/* gentle fan-out on cluster hover */
+.fan:hover .fan-card.back {
+  transform: translateX(-104px) translateY(-4px) rotate(-7deg) scale(0.97);
+}
+.fan:hover .fan-card.mid {
+  transform: translateY(-16px) rotate(0deg) scale(1.02);
+}
+.fan:hover .fan-card.front {
+  transform: translateX(104px) translateY(-4px) rotate(7deg) scale(0.97);
+}
+/* pop the card you point at */
+.fan-card:hover {
+  z-index: 9 !important;
+  box-shadow: 0 44px 80px -28px rgba(2, 6, 23, 0.75);
+}
+.fan-card:hover .go {
+  opacity: 1;
+  transform: translateY(0);
+}
+.fan:hover .fan-card.back:hover {
+  transform: translateX(-104px) translateY(-26px) rotate(-4deg) scale(1.03);
+}
+.fan:hover .fan-card.mid:hover {
+  transform: translateY(-34px) rotate(0deg) scale(1.05);
+}
+.fan:hover .fan-card.front:hover {
+  transform: translateX(104px) translateY(-26px) rotate(4deg) scale(1.03);
+}
+.fan-hint {
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* ---- layer 2: frosted glass band (PC Builder + Promotion) -------------- */
+.home .sec-integrated {
+  position: relative;
+  z-index: 10;
+  margin-top: 56px;
+  padding-top: 96px;
+  padding-bottom: 0;
+}
+.home .glass-frost {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent),
+    linear-gradient(180deg, #000 42%, transparent 82%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent),
+    linear-gradient(180deg, #000 42%, transparent 82%);
+  mask-composite: intersect;
+}
+.home .two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 960px) {
+  .home .two {
+    grid-template-columns: 1fr;
+  }
+}
+/* opaque cards dip over the white sheet — clean overlap, no glow */
+.home .sec-integrated .two {
+  position: relative;
+  z-index: 2;
+  margin-bottom: -88px;
+}
+@media (max-width: 640px) {
+  .home .sec-integrated {
+    padding-top: 56px;
+  }
+  .home .sec-integrated .two {
+    margin-bottom: -60px;
+  }
+}
+
+/* PC Builder panel — opaque so nothing bleeds through */
+.home .panel {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  padding: 26px;
+  background: #121a2c;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  text-decoration: none;
+  color: #fff;
+  transition: transform 0.25s ease, border-color 0.25s ease;
+}
+.home .panel:hover {
+  transform: translateY(-4px);
+  border-color: rgba(147, 192, 255, 0.35);
+}
+.home .panel .p-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.home .panel .p-eye {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #93c0ff;
+}
+.home .panel .p-ico {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(37, 99, 235, 0.2);
+  color: #93c0ff;
+}
+.home .panel h3 {
+  margin: 18px 0 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.home .panel p {
+  margin: 12px 0 0;
+  color: #9aa6bd;
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 42ch;
+}
+.home .panel .p-go {
+  margin-top: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #fff;
+}
+.home .panel .p-go svg {
+  transition: transform 0.25s ease;
+}
+.home .panel:hover .p-go svg {
+  transform: translateX(5px);
+}
+
+/* ===== "Build sheet" PC Builder ad + Promotion frame (below categories) === */
+.home .builder {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  padding: 24px 26px;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 28px;
+  align-items: center;
+  background: linear-gradient(155deg, #0e1730, #0b1220 72%);
+  border: 1px solid rgba(80, 120, 200, 0.22);
+  box-shadow: 0 30px 64px -40px rgba(2, 6, 23, 0.8);
+  color: #fff;
+}
+/* blueprint grid + corner glow */
+.home .builder-bp {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(70% 62% at 100% -12%, rgba(59, 130, 246, 0.3), transparent 62%),
+    linear-gradient(rgba(120, 170, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 170, 255, 0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 26px 26px, 26px 26px;
+}
+@media (max-width: 860px) {
+  .home .builder {
+    grid-template-columns: 1fr;
+    padding: 22px 20px;
+    gap: 22px;
+  }
+}
+.home .builder-copy,
+.home .builder-schema {
+  position: relative;
+  z-index: 1;
+}
+.home .builder-eye {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #93c0ff;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.14);
+  border: 1px solid rgba(147, 192, 255, 0.24);
+}
+.home .builder h2 {
+  margin: 12px 0 0;
+  font-size: clamp(21px, 2.2vw, 27px);
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+.home .builder h2 .accent {
+  background: linear-gradient(100deg, #93c0ff, #22d3ee);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.home .builder p {
+  margin: 9px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #93a1ba;
+  max-width: 42ch;
+}
+.home .builder-budget {
+  margin-top: 15px;
+}
+.home .bud-cap {
+  display: block;
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 9px;
+}
+.home .bud-track {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.home .bud-chip {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #cbd5e1;
+  padding: 5px 10px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+.home .builder-actions {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.home .builder-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #fff;
+  text-decoration: none;
+  background: linear-gradient(120deg, #1d4ed8, #2563eb 45%, #06b6d4);
+  box-shadow: 0 16px 34px -14px rgba(37, 99, 235, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.home .builder-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 46px -14px rgba(37, 99, 235, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.home .builder-cta svg {
+  transition: transform 0.25s ease;
+}
+.home .builder-cta:hover svg {
+  transform: translateX(4px);
+}
+.home .builder-note {
+  font-size: 11.5px;
+  color: #7c8aa3;
+}
+
+/* the signature: a circuit "bus" wiring the parts into one machine */
+.home .builder-schema {
+  align-self: stretch;
+  padding: 15px 16px;
+  border-radius: 15px;
+  background: rgba(8, 13, 26, 0.55);
+  border: 1px solid rgba(80, 120, 200, 0.2);
+}
+.home .schema-cap {
+  display: block;
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #5b6b86;
+  margin-bottom: 8px;
+}
+.home .bus {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+.home .bus::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 14px;
+  bottom: 10px;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #3b82f6, #22d3ee);
+  opacity: 0.55;
+}
+.home .node {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px 26px 1fr auto;
+  align-items: center;
+  gap: 0 10px;
+  padding: 3.5px 0;
+}
+.home .node-dot {
+  grid-column: 1;
+  justify-self: center;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22d3ee;
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.14), 0 0 9px rgba(34, 211, 238, 0.5);
+  transition: box-shadow 0.3s ease;
+}
+.home .builder:hover .node-dot {
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.2), 0 0 14px rgba(34, 211, 238, 0.75);
+}
+.home .node-ico {
+  grid-column: 2;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: rgba(59, 130, 246, 0.16);
+  color: #93c0ff;
+}
+.home .node-name {
+  grid-column: 3;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+.home .node-code {
+  grid-column: 4;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #5b6b86;
+}
+.home .bus-out {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  align-items: center;
+  gap: 0 11px;
+}
+.home .out-dot {
+  grid-column: 1;
+  justify-self: center;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  transform: rotate(45deg);
+  background: #22d3ee;
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.6);
+}
+.home .bus-out .mono {
+  grid-column: 2;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #93c0ff;
+}
+
+/* Promotion — a quiet labeled frame; the admin image stays the star */
+.home .promo-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 13px;
+}
+.home .promo-tag {
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  padding: 5px 10px;
+  border-radius: 8px;
+}
+.home .promo-sub {
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* ---- layer 3: white sheet rises over the dark -------------------------- */
+.home .body-zone {
+  position: relative;
+  z-index: 2;
+  background: #f7f8fa;
+  color: #0d0f15;
+  border-radius: 34px 34px 0 0;
+  margin-top: -36px;
+  padding-top: 56px;
+  box-shadow: 0 -26px 60px -30px rgba(3, 7, 18, 0.6);
+}
+@media (max-width: 640px) {
+  .home .body-zone {
+    margin-top: -28px;
+    padding-top: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta-build,
+  .cta-build::after,
+  .cta-build .cta-arr,
+  .fan-card,
+  .fan-card .go,
+  .home .panel,
+  .home .panel .p-go svg,
+  .home .builder-cta,
+  .home .builder-cta svg,
+  .home .node-dot {
+    transition: none;
+  }
+}

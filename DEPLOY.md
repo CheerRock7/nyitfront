@@ -1,5 +1,20 @@
 # Deploying nyitfront to the VPS
 
+## Quick redeploy (after code changes)
+
+```bash
+cd /var/www/nyitfront
+git pull
+npm install
+npm run build
+pm2 reload nyitfront
+```
+
+> `ssh root@194.233.88.142` drops you in `/root`, so `cd /var/www/nyitfront` first.
+> Use `npm install` (not `npm ci` — cross-platform lockfile). Full details below.
+
+---
+
 Target server (Contabo) already runs:
 
 - **`nyit-app`** — the live stocking system (PM2, port 3000, + Postgres/MySQL/storage). **Do not touch it.**

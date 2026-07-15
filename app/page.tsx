@@ -1,14 +1,12 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  Wrench,
-} from "lucide-react";
 import { builderCategory, categoryMeta, type Category, type Product } from "@/lib/data";
 import { getCategories, getProducts } from "@/lib/products";
 import { RecommendedProductsCarousel } from "@/components/admin-featured";
-import { CategoryProductBanner } from "@/components/category-product-banner";
+import { HomeHero, type CategoryStat } from "@/components/home-hero";
 import { CategoryIcon } from "@/components/icons";
+import { PcBuilderFeature } from "@/components/pc-builder-feature";
 import { PromotionImageBanner } from "@/components/promotion-banner";
+import { SnapScroll } from "@/components/snap-scroll";
 
 export const dynamic = "force-dynamic";
 
@@ -20,48 +18,48 @@ const fallbackCategories: Category[] = [
   { id: "monitor", name: "จอภาพ", en: categoryMeta.monitor.en, icon: categoryMeta.monitor.icon },
 ];
 
+function statFor(products: Product[], cat: string): CategoryStat {
+  const items = products.filter((product) => product.cat === cat);
+  const from = items.reduce((min, product) => (product.price > 0 && product.price < min ? product.price : min), Infinity);
+  // Whole baht for the "เริ่มต้น" pill — bundle prices carry satang decimals.
+  return { count: items.length, from: Number.isFinite(from) ? Math.round(from) : 0 };
+}
+
 export default async function HomePage() {
   const { categories, products, dbUnavailable } = await loadHomeData();
   const navCategories = [builderCategory, ...(categories.length ? categories : fallbackCategories)];
+  const stats = {
+    gpu: statFor(products, "gpu"),
+    cpu: statFor(products, "cpu"),
+    set: statFor(products, "set"),
+  };
 
   return (
-    <main className="bg-[#f5f6f8]">
+    <main className="home">
       <h1 className="sr-only">NYIT Computer</h1>
-      <section className="border-b border-slate-200 bg-white py-8 lg:py-10">
-        <div className="wrap">
-          {dbUnavailable ? (
-            <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      <SnapScroll />
+
+      {/* Layer 1 + 2: dark hero and the frosted glass band */}
+      <div className="home-hero-zone" data-snap>
+        {dbUnavailable ? (
+          <div className="wrap pt-4">
+            <div className="rounded-xl border border-amber-300/40 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
               กำลังแสดงหน้าแรกแบบตัวอย่าง เพราะยังเชื่อมต่อฐานข้อมูลไม่ได้
             </div>
-          ) : null}
+          </div>
+        ) : null}
 
-          <CategoryProductBanner products={products} />
-        </div>
-      </section>
+        <HomeHero stats={stats} />
+      </div>
 
-      <section className="py-7">
-        <div className="wrap grid items-stretch gap-5 lg:grid-cols-2">
-          <PromoPanel
-            title="จัดสเปกคอมตามงบ"
-            eyebrow="PC Builder"
-            text="เลือก CPU, VGA, RAM, SSD และอุปกรณ์หลักในชุดเดียว เหมาะกับลูกค้าที่อยากได้เครื่องพร้อมใช้งาน"
-            href="/builder"
-            cta="เริ่มจัดสเปก"
-            icon={<Wrench className="h-6 w-6" />}
-          />
-          <PromotionImageBanner />
-        </div>
-      </section>
-
-      <section className="py-14">
-        <div className="wrap">
+      {/* White sheet rising over the dark hero */}
+      <div className="body-zone" data-snap>
+        <section className="wrap pb-14">
           <SectionHead title="สินค้าแนะนำ" href="/products" />
           <RecommendedProductsCarousel products={products} />
-        </div>
-      </section>
+        </section>
 
-      <section className="pb-16">
-        <div className="wrap">
+        <section className="wrap pb-12">
           <SectionHead title="หมวดหมู่สินค้า" href="/products" />
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
             {navCategories.slice(0, 12).map((category) => (
@@ -84,8 +82,20 @@ export default async function HomePage() {
               </Link>
               ))}
           </div>
-        </div>
-      </section>
+        </section>
+
+        {/* Ads: PC Builder + Promotion, below the categories */}
+        <section className="wrap grid gap-8 pb-16">
+          <PcBuilderFeature />
+          <div className="promo-ad">
+            <div className="promo-head">
+              <span className="promo-tag mono">โปรโมชัน</span>
+              <span className="promo-sub">ดีลและของแถม อัปเดตทุกสัปดาห์</span>
+            </div>
+            <PromotionImageBanner />
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
@@ -97,38 +107,6 @@ async function loadHomeData() {
   } catch {
     return { categories: [] as Category[], products: [] as Product[], dbUnavailable: true };
   }
-}
-
-function PromoPanel({
-  title,
-  eyebrow,
-  text,
-  href,
-  cta,
-  icon,
-}: {
-  title: string;
-  eyebrow: string;
-  text: string;
-  href: string;
-  cta: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <Link href={href} className="group flex h-full flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-xl sm:p-5">
-      <div>
-        <div className="flex items-center justify-between gap-4">
-          <p className="mono text-xs uppercase tracking-[.16em] text-blue-700">{eyebrow}</p>
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-blue-50 text-blue-700">{icon}</span>
-        </div>
-        <h2 className="mt-4 max-w-md text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">{title}</h2>
-        <p className="mt-3 max-w-lg text-xs leading-5 text-slate-600 sm:text-sm sm:leading-6">{text}</p>
-      </div>
-      <span className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-slate-950">
-        {cta} <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-      </span>
-    </Link>
-  );
 }
 
 function SectionHead({ title, href }: { title: string; href: string }) {

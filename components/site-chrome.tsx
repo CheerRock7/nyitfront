@@ -61,6 +61,11 @@ const nav = [
 export function SiteChrome({ children, categories }: { children: ReactNode; categories: Category[] }) {
   const pathname = usePathname();
   const router = useRouter();
+  // On the homepage the navbar sits over the dark hero and blends in (light
+  // text, frosted-dark backdrop) until you scroll; everywhere else it's the
+  // normal solid white bar.
+  const [atTop, setAtTop] = useState(true);
+  const overHero = pathname === "/" && atTop;
   const [cart, setCart] = useState<Record<string, number>>({});
   const [cartProducts, setCartProducts] = useState<Record<string, Product>>({});
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -123,6 +128,17 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
       body: JSON.stringify({ items: nextLines }),
     }).catch(() => undefined);
   };
+
+  useEffect(() => {
+    if (pathname !== "/") {
+      setAtTop(false);
+      return;
+    }
+    const onScroll = () => setAtTop(window.scrollY < 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [pathname]);
 
   useEffect(() => {
     let active = true;
@@ -258,28 +274,48 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
   return (
     <CartContext.Provider value={value}>
       <AuthContext.Provider value={authValue}>
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/75 backdrop-blur-xl">
+      <header
+        className={`sticky top-0 z-50 transition-colors duration-300 ${
+          overHero
+            ? "border-b border-transparent bg-gradient-to-b from-[#080c18]/70 to-transparent backdrop-blur-md"
+            : "border-b border-slate-200 bg-white/75 backdrop-blur-xl"
+        }`}
+      >
         <div className="wrap grid h-[72px] grid-cols-[auto_1fr_auto] items-center gap-5 max-md:h-16 max-md:grid-cols-[auto_auto]">
-          <Brand />
+          <Brand dark={overHero} />
           <div className="relative max-md:hidden">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+            <Search className={`pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${overHero ? "text-slate-300" : "text-slate-400"}`} />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => event.key === "Enter" && doSearch()}
-              className="h-12 w-full rounded-full border border-slate-300 bg-white pl-12 pr-4 text-sm outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+              className={`h-12 w-full rounded-full border pl-12 pr-4 text-sm outline-none transition ${
+                overHero
+                  ? "border-white/15 bg-white/10 text-white placeholder:text-slate-300 focus:border-white/40 focus:ring-4 focus:ring-white/10"
+                  : "border-slate-300 bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+              }`}
               placeholder={T.search}
             />
           </div>
           <div className="flex items-center justify-end gap-2">
-            <BarcodeScanner />
+            <BarcodeScanner
+              className={`relative grid h-11 w-11 place-items-center rounded-xl transition ${
+                overHero ? "border border-white/15 bg-white/10 text-white hover:border-white/40" : "border border-slate-200 bg-white hover:border-slate-950"
+              }`}
+            />
             <nav className="hidden items-center gap-1 lg:flex">
               {nav.slice(0, 3).map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                    pathname === item.href ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                    pathname === item.href
+                      ? overHero
+                        ? "bg-white/15 text-white"
+                        : "bg-blue-50 text-blue-700"
+                      : overHero
+                        ? "text-slate-200 hover:bg-white/10 hover:text-white"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
                   }`}
                 >
                   {item.label}
@@ -290,7 +326,9 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
               <div className="relative hidden md:block">
                 <button
                   onClick={() => setAccountOpen((current) => !current)}
-                  className="inline-flex h-10 items-center gap-2 rounded-full bg-slate-950 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
+                  className={`inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium shadow-sm transition ${
+                    overHero ? "bg-white text-slate-950 hover:bg-slate-100" : "bg-slate-950 text-white hover:bg-slate-800"
+                  }`}
                   aria-expanded={accountOpen}
                   aria-haspopup="menu"
                 >
@@ -308,7 +346,9 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
             ) : (
               <button
                 onClick={() => openAuth("login")}
-                className="hidden h-10 rounded-full bg-slate-950 px-4 text-sm font-medium text-white md:inline-flex md:items-center md:gap-2"
+                className={`hidden h-10 rounded-full px-4 text-sm font-medium md:inline-flex md:items-center md:gap-2 ${
+                  overHero ? "bg-white text-slate-950 hover:bg-slate-100" : "bg-slate-950 text-white"
+                }`}
               >
                 <User className="h-4 w-4" />
                 {T.login}
@@ -316,7 +356,9 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
             )}
             <button
               onClick={() => setDrawerOpen(true)}
-              className="relative grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-white transition hover:border-slate-950"
+              className={`relative grid h-11 w-11 place-items-center rounded-xl transition ${
+                overHero ? "border border-white/15 bg-white/10 text-white hover:border-white/40" : "border border-slate-200 bg-white hover:border-slate-950"
+              }`}
               aria-label={T.cartLabel}
             >
               <ShoppingCart className="h-5 w-5" />
@@ -328,7 +370,9 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
             </button>
             <button
               onClick={() => setMenuOpen(true)}
-              className="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-white lg:hidden"
+              className={`grid h-11 w-11 place-items-center rounded-xl lg:hidden ${
+                overHero ? "border border-white/15 bg-white/10 text-white" : "border border-slate-200 bg-white"
+              }`}
               aria-label={T.menu}
             >
               <Menu className="h-5 w-5" />
