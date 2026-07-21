@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Check, ChevronDown, Plus, RotateCcw, Search, ShoppingCart, Trash2, Zap } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, Info, Plus, RotateCcw, Search, ShoppingCart, ShieldCheck, Trash2, Zap } from "lucide-react";
 import { baht, budgets, buildSlots, type Product } from "@/lib/data";
 import { CategoryIcon } from "@/components/icons";
 import { useCart } from "@/components/app-context";
@@ -34,9 +34,16 @@ const T = {
   highToLow: "\u0e23\u0e32\u0e04\u0e32\u0e2a\u0e39\u0e07-\u0e15\u0e48\u0e33",
   nameSort: "\u0e0a\u0e37\u0e48\u0e2d A-Z",
   x1: "x 1",
+  fitBudget: "พอดีงบที่เหลือ",
+  ready: "สเปกพร้อมสั่งซื้อ",
+  checkSpec: "ตรวจสเปก",
+  blocked: "แก้รายการที่ไม่เข้ากันก่อน",
+  chooseRequired: "เลือกชิ้นส่วนจำเป็นให้ครบก่อน",
 };
 
 type SortKey = "price-asc" | "price-desc" | "name";
+type BuildIssue = { kind: "error" | "warning" | "info"; title: string; detail: string };
+type BuildAnalysis = { issues: BuildIssue[]; errors: BuildIssue[]; warnings: BuildIssue[]; infos: BuildIssue[]; recommendedPsu?: number; estimatedLoad?: number };
 
 export function BuilderClient({ buildParts }: { buildParts: Record<string, Product[]> }) {
   const params = useSearchParams();
@@ -46,6 +53,7 @@ export function BuilderClient({ buildParts }: { buildParts: Record<string, Produ
   const [brandFilters, setBrandFilters] = useState<Record<string, string[]>>({});
   const [brandOpen, setBrandOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>("price-asc");
+  const [fitBudgetOnly, setFitBudgetOnly] = useState(false);
   const [build, setBuild] = useState<Record<string, Product>>({});
   const { addItem, openCart } = useCart();
 
@@ -58,6 +66,10 @@ export function BuilderClient({ buildParts }: { buildParts: Record<string, Produ
   const complete = requiredPicked === requiredTotal;
   const remaining = requiredTotal - requiredPicked;
   const lines = useMemo(() => buildSlots.map((slot) => ({ slot, part: build[slot.key] })), [build]);
+  const analysis = useMemo(() => analyzeBuild(build, budget?.max), [build, budget?.max]);
+  const cartReady = complete && analysis.errors.length === 0 && Object.values(build).length > 0;
+  const activeSelectedPrice = activeSlot && build[activeSlot.key] ? build[activeSlot.key].price : 0;
+  const activeBudgetLeft = budget ? budget.max - total + activeSelectedPrice : Infinity;
 
   const activeParts = activeSlot ? buildParts[activeSlot.cat] || [] : [];
   const brands = useMemo(() => {
@@ -71,7 +83,8 @@ export function BuilderClient({ buildParts }: { buildParts: Record<string, Produ
         ? `${part.name} ${part.brand} ${part.spec} ${part.price}`.toLowerCase().includes(search)
         : true;
       const matchesBrand = activeBrands.length ? activeBrands.includes(part.brand) : true;
-      return matchesSearch && matchesBrand;
+      const matchesBudget = fitBudgetOnly && budget ? part.price <= activeBudgetLeft : true;
+      return matchesSearch && matchesBrand && matchesBudget;
     });
 
     return [...filtered].sort((a, b) => {
@@ -79,7 +92,7 @@ export function BuilderClient({ buildParts }: { buildParts: Record<string, Produ
       if (sortBy === "name") return a.name.localeCompare(b.name);
       return a.price - b.price;
     });
-  }, [activeBrands, activeParts, search, sortBy]);
+  }, [activeBrands, activeBudgetLeft, activeParts, budget, fitBudgetOnly, search, sortBy]);
 
   const choosePart = (slotKey: string, part: Product) => {
     setBuild((current) => {
@@ -108,6 +121,7 @@ export function BuilderClient({ buildParts }: { buildParts: Record<string, Produ
   };
 
   const addBuild = () => {
+    if (!cartReady) return;
     Object.values(build).forEach((part) => addItem(part, 1));
     if (Object.values(build).length) openCart();
   };
@@ -226,7 +240,38 @@ export function BuilderClient({ buildParts }: { buildParts: Record<string, Produ
               {complete ? <Check className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
               {complete ? T.complete : `${T.remainingPrefix} ${remaining} ${T.remainingSuffix}`}
             </div>
-            <button onClick={addBuild} className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-blue-600 font-medium text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700">
+
+            <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  <ShieldCheck className="h-4 w-4 text-blue-600" /> {T.checkSpec}
+                </span>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${cartReady ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                  {cartReady ? T.ready : complete ? T.blocked : T.chooseRequired}
+                </span>
+              </div>
+              {analysis.issues.length ? (
+                <div className="space-y-2">
+                  {analysis.issues.map((issue) => (
+                    <SpecIssue key={`${issue.kind}-${issue.title}-${issue.detail}`} issue={issue} />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-start gap-2 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>ยังไม่พบปัญหาความเข้ากันของชิ้นส่วนที่เลือก</span>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={addBuild}
+              disabled={!cartReady}
+              title={!complete ? T.chooseRequired : analysis.errors.length ? T.blocked : T.addBuild}
+              className={`flex h-12 w-full items-center justify-center gap-2 rounded-full font-medium shadow-lg transition ${
+                cartReady ? "bg-blue-600 text-white shadow-blue-600/20 hover:bg-blue-700" : "cursor-not-allowed bg-slate-200 text-slate-500 shadow-none"
+              }`}
+            >
               <ShoppingCart className="h-4 w-4" /> {T.addBuild}
             </button>
             <button onClick={() => setBuild({})} className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-full border border-slate-300 bg-white font-medium transition hover:bg-slate-50">
@@ -267,7 +312,20 @@ export function BuilderClient({ buildParts }: { buildParts: Record<string, Produ
                 />
               </label>
 
-              <div className="relative">
+              <div className="flex flex-wrap items-center gap-3">
+                {budget ? (
+                  <button
+                    type="button"
+                    onClick={() => setFitBudgetOnly((value) => !value)}
+                    className={`inline-flex h-14 items-center justify-center rounded-full px-5 text-sm font-semibold transition ${
+                      fitBudgetOnly ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    }`}
+                  >
+                    {T.fitBudget}
+                  </button>
+                ) : null}
+
+                <div className="relative">
                 <button
                   type="button"
                   onClick={() => setBrandOpen((open) => !open)}
@@ -304,6 +362,7 @@ export function BuilderClient({ buildParts }: { buildParts: Record<string, Produ
                     </div>
                   </div>
                 ) : null}
+                </div>
               </div>
             </div>
           </div>
@@ -375,4 +434,170 @@ function ProductThumb({ product, size = "md" }: { product: Product; size?: "sm" 
       )}
     </span>
   );
+}
+
+function SpecIssue({ issue }: { issue: BuildIssue }) {
+  const style = {
+    error: "bg-red-50 text-red-700",
+    warning: "bg-amber-50 text-amber-700",
+    info: "bg-blue-50 text-blue-700",
+  }[issue.kind];
+  const Icon = issue.kind === "error" ? AlertTriangle : issue.kind === "warning" ? Zap : Info;
+
+  return (
+    <div className={`flex items-start gap-2 rounded-xl p-3 text-sm ${style}`}>
+      <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+      <span>
+        <span className="block font-semibold">{issue.title}</span>
+        <span className="mt-0.5 block leading-5 opacity-85">{issue.detail}</span>
+      </span>
+    </div>
+  );
+}
+
+function analyzeBuild(build: Record<string, Product>, budgetMax?: number): BuildAnalysis {
+  const issues: BuildIssue[] = [];
+  const cpu = build.cpu;
+  const mb = build.mb;
+  const ram = build.ram;
+  const gpu = build.gpu;
+  const psu = build.psu;
+  const total = Object.values(build).reduce((sum, part) => sum + part.price, 0);
+
+  const cpuSocket = cpu ? readSocket(cpu) : null;
+  const mbSocket = mb ? readSocket(mb) : null;
+  if (cpu && mb) {
+    if (cpuSocket && mbSocket && cpuSocket !== mbSocket) {
+      issues.push({
+        kind: "error",
+        title: "CPU กับเมนบอร์ดไม่ตรงกัน",
+        detail: `${cpu.name} เป็น ${cpuSocket} แต่เมนบอร์ดเป็น ${mbSocket}`,
+      });
+    } else if (!cpuSocket || !mbSocket) {
+      issues.push({
+        kind: "warning",
+        title: "ยังตรวจ socket ได้ไม่ครบ",
+        detail: "ควรใส่ข้อมูล socket ในชื่อ/รุ่น/สเปกสินค้า เช่น AM5 หรือ LGA1700 เพื่อให้ระบบเช็คแม่นขึ้น",
+      });
+    }
+  }
+
+  const mbMemory = mb ? readMemoryType(mb) : null;
+  const ramMemory = ram ? readMemoryType(ram) : null;
+  if (mb && ram) {
+    if (mbMemory && ramMemory && mbMemory !== ramMemory) {
+      issues.push({
+        kind: "error",
+        title: "แรมกับเมนบอร์ดคนละชนิด",
+        detail: `เมนบอร์ดรองรับ ${mbMemory} แต่แรมที่เลือกเป็น ${ramMemory}`,
+      });
+    } else if (!mbMemory || !ramMemory) {
+      issues.push({
+        kind: "warning",
+        title: "ยังตรวจชนิดแรมได้ไม่ครบ",
+        detail: "ควรมี DDR4 หรือ DDR5 ในข้อมูลเมนบอร์ดและแรม เพื่อกันการเลือกผิดรุ่น",
+      });
+    }
+  }
+
+  const estimatedLoad = estimateSystemLoad(cpu, gpu);
+  const recommendedPsu = estimatedLoad ? Math.ceil((estimatedLoad * 1.35) / 50) * 50 : undefined;
+  const psuWatt = psu ? readWatt(psu) : null;
+  if (psu && estimatedLoad) {
+    if (psuWatt && recommendedPsu && psuWatt < estimatedLoad * 1.15) {
+      issues.push({
+        kind: "error",
+        title: "PSU วัตต์ต่ำเกินไป",
+        detail: `โหลดโดยประมาณ ${estimatedLoad}W แนะนำอย่างน้อย ${recommendedPsu}W แต่ PSU ที่เลือกคือ ${psuWatt}W`,
+      });
+    } else if (psuWatt && recommendedPsu && psuWatt < recommendedPsu) {
+      issues.push({
+        kind: "warning",
+        title: "PSU พอใช้แต่เผื่อน้อย",
+        detail: `โหลดโดยประมาณ ${estimatedLoad}W แนะนำ ${recommendedPsu}W เพื่อเหลือ headroom`,
+      });
+    } else if (!psuWatt) {
+      issues.push({
+        kind: "warning",
+        title: "ยังอ่านวัตต์ PSU ไม่ได้",
+        detail: "ควรใส่วัตต์ในชื่อ/รุ่น/สเปกสินค้า เช่น 650W เพื่อให้ระบบประเมินไฟได้",
+      });
+    }
+  }
+
+  if (budgetMax && total > budgetMax) {
+    issues.push({
+      kind: "info",
+      title: "เกินงบที่เลือก",
+      detail: `ยอดรวมเกินงบประมาณ ${baht(total - budgetMax)} แต่ยังสั่งซื้อได้ถ้าลูกค้ายืนยัน`,
+    });
+  }
+
+  return {
+    issues,
+    errors: issues.filter((issue) => issue.kind === "error"),
+    warnings: issues.filter((issue) => issue.kind === "warning"),
+    infos: issues.filter((issue) => issue.kind === "info"),
+    recommendedPsu,
+    estimatedLoad,
+  };
+}
+
+function productText(product: Product) {
+  const specRows = product.specs?.flat().join(" ") ?? "";
+  return `${product.name} ${product.brand} ${product.spec} ${product.notes ?? ""} ${product.description ?? ""} ${specRows}`.toUpperCase();
+}
+
+function readSocket(product: Product) {
+  const text = productText(product).replace(/\s+/g, "");
+  const patterns = ["LGA1851", "LGA1700", "LGA1200", "LGA1151", "AM5", "AM4", "TR4", "STRX4"];
+  return patterns.find((pattern) => text.includes(pattern)) ?? null;
+}
+
+function readMemoryType(product: Product) {
+  const text = productText(product);
+  if (/\bDDR5\b/.test(text)) return "DDR5";
+  if (/\bDDR4\b/.test(text)) return "DDR4";
+  if (/\bDDR3\b/.test(text)) return "DDR3";
+  return null;
+}
+
+function readWatt(product: Product) {
+  const text = productText(product);
+  const matches = [...text.matchAll(/(\d{3,4})\s*(?:W|วัตต์)/g)]
+    .map((match) => Number(match[1]))
+    .filter((value) => value >= 250 && value <= 2000);
+  return matches.length ? Math.max(...matches) : null;
+}
+
+function estimateSystemLoad(cpu?: Product, gpu?: Product) {
+  const cpuLoad = cpu ? estimateCpuLoad(cpu) : 0;
+  const gpuLoad = gpu ? estimateGpuLoad(gpu) : 0;
+  if (!cpuLoad && !gpuLoad) return 0;
+  return cpuLoad + gpuLoad + 90;
+}
+
+function estimateCpuLoad(product: Product) {
+  const text = productText(product);
+  if (/I9|RYZEN\s*9|R9\b/.test(text)) return 170;
+  if (/I7|RYZEN\s*7|R7\b/.test(text)) return 125;
+  if (/I5|RYZEN\s*5|R5\b/.test(text)) return 95;
+  if (/I3|RYZEN\s*3|R3\b/.test(text)) return 65;
+  return 90;
+}
+
+function estimateGpuLoad(product: Product) {
+  const text = productText(product);
+  const table: Array<[RegExp, number]> = [
+    [/RTX\s*4090|4090\b/, 450],
+    [/RTX\s*4080|4080\b|RX\s*7900/, 330],
+    [/RTX\s*4070|4070\b|RX\s*7800/, 240],
+    [/RTX\s*4060|4060\b|RX\s*7600/, 170],
+    [/RTX\s*3090|3090\b/, 360],
+    [/RTX\s*3080|3080\b|RX\s*6800/, 320],
+    [/RTX\s*3070|3070\b|RX\s*6700/, 240],
+    [/RTX\s*3060|3060\b|RX\s*6600/, 180],
+    [/GTX\s*1660|1660\b/, 140],
+  ];
+  return table.find(([pattern]) => pattern.test(text))?.[1] ?? 220;
 }

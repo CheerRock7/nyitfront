@@ -59,6 +59,18 @@ export default async function HomePage() {
           <RecommendedProductsCarousel products={products} />
         </section>
 
+        {/* Ads: PC Builder + Promotion */}
+        <section className="wrap grid gap-8 pb-16">
+          <PcBuilderFeature />
+          <div className="promo-ad">
+            <div className="promo-head">
+              <span className="promo-tag mono">โปรโมชัน</span>
+              <span className="promo-sub">ดีลและของแถม อัปเดตทุกสัปดาห์</span>
+            </div>
+            <PromotionImageBanner />
+          </div>
+        </section>
+
         <section className="wrap pb-12">
           <SectionHead title="หมวดหมู่สินค้า" href="/products" />
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
@@ -80,19 +92,7 @@ export default async function HomePage() {
                 <div className="font-medium">{category.name}</div>
                 <div className="mono mt-1 text-[10px] tracking-widest opacity-55">{category.en}</div>
               </Link>
-              ))}
-          </div>
-        </section>
-
-        {/* Ads: PC Builder + Promotion, below the categories */}
-        <section className="wrap grid gap-8 pb-16">
-          <PcBuilderFeature />
-          <div className="promo-ad">
-            <div className="promo-head">
-              <span className="promo-tag mono">โปรโมชัน</span>
-              <span className="promo-sub">ดีลและของแถม อัปเดตทุกสัปดาห์</span>
-            </div>
-            <PromotionImageBanner />
+            ))}
           </div>
         </section>
       </div>
