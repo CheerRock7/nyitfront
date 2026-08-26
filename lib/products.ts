@@ -28,6 +28,8 @@ type ProductRow = {
   model: string | null;
   notes: string | null;
   serial_note: string | null;
+  serial_warranty_months: number | null;
+  serial_warranty_text: string | null;
   description: string | null;
   specs: [string, string][] | null;
   image_url: string | null;
@@ -35,6 +37,13 @@ type ProductRow = {
 };
 
 type BundleRow = ProductRow;
+
+function warrantyLabel(text: string | null, months: number | null): string | undefined {
+  const trimmed = text?.trim();
+  if (trimmed) return `\u0e1b\u0e23\u0e30\u0e01\u0e31\u0e19 ${trimmed}`;
+  if (months && months > 0) return `\u0e1b\u0e23\u0e30\u0e01\u0e31\u0e19 ${months} \u0e40\u0e14\u0e37\u0e2d\u0e19`;
+  return undefined;
+}
 
 function toProduct(row: ProductRow): Product {
   const slug = row.cat ?? "";
@@ -50,6 +59,7 @@ function toProduct(row: ProductRow): Product {
     price: Number(row.price),
     spec: row.model || row.notes || "",
     notes: row.serial_note ?? (String(row.id).startsWith("bundle-") ? row.notes ?? undefined : undefined),
+    warranty: warrantyLabel(row.serial_warranty_text, row.serial_warranty_months),
     description: row.description ?? undefined,
     specs: row.specs ?? undefined,
     glyph: meta?.icon ?? slug ?? "set",
@@ -94,6 +104,8 @@ async function getBundleProducts(bundleId?: string): Promise<Product[]> {
             (COUNT(p.id)::text || ' รายการในชุด') AS model,
             STRING_AGG(p.name, ' + ' ORDER BY p.id) AS notes,
             NULL::text AS serial_note,
+            NULL::integer AS serial_warranty_months,
+            NULL::text AS serial_warranty_text,
             NULL::text AS description,
             NULL::jsonb AS specs,
             (ARRAY_AGG(s.image_url ORDER BY p.id)
@@ -126,13 +138,15 @@ export async function getProducts(): Promise<Product[]> {
   // price/image_url.
   const rows = await query<ProductRow>(
     `SELECT p.id, p.name, c.slug AS cat, c.name AS cat_name,
-            p.brand, p.model, p.notes, s.serial_note, p.description, p.specs, s.price, s.image_url, s.image_urls
+            p.brand, p.model, p.notes, s.serial_note, s.serial_warranty_months, s.serial_warranty_text, p.description, p.specs, s.price, s.image_url, s.image_urls
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        JOIN LATERAL (
          SELECT MIN(ps.price) AS price,
                 (ARRAY_AGG(NULLIF(ps.note, '') ORDER BY ps.price, ps.id)
                    FILTER (WHERE ps.note IS NOT NULL AND ps.note <> ''))[1] AS serial_note,
+                (ARRAY_AGG(ps.warranty_months ORDER BY ps.price, ps.id))[1] AS serial_warranty_months,
+                (ARRAY_AGG(NULLIF(ps.warranty_text, '') ORDER BY ps.price, ps.id))[1] AS serial_warranty_text,
                 (ARRAY_AGG(ps.image_url ORDER BY ps.price, ps.id)
                    FILTER (WHERE ps.image_url IS NOT NULL))[1] AS image_url,
                 ARRAY(
@@ -172,13 +186,15 @@ export async function getProductById(id: string): Promise<Product | null> {
 
   const rows = await query<ProductRow>(
     `SELECT p.id, p.name, c.slug AS cat, c.name AS cat_name,
-            p.brand, p.model, p.notes, s.serial_note, p.description, p.specs, s.price, s.image_url, s.image_urls
+            p.brand, p.model, p.notes, s.serial_note, s.serial_warranty_months, s.serial_warranty_text, p.description, p.specs, s.price, s.image_url, s.image_urls
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        JOIN LATERAL (
          SELECT MIN(ps.price) AS price,
                 (ARRAY_AGG(NULLIF(ps.note, '') ORDER BY ps.price, ps.id)
                    FILTER (WHERE ps.note IS NOT NULL AND ps.note <> ''))[1] AS serial_note,
+                (ARRAY_AGG(ps.warranty_months ORDER BY ps.price, ps.id))[1] AS serial_warranty_months,
+                (ARRAY_AGG(NULLIF(ps.warranty_text, '') ORDER BY ps.price, ps.id))[1] AS serial_warranty_text,
                 (ARRAY_AGG(ps.image_url ORDER BY ps.price, ps.id)
                    FILTER (WHERE ps.image_url IS NOT NULL))[1] AS image_url,
                 ARRAY(

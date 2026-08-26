@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, ImagePlus, Search, Star, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImagePlus, Search, ShieldCheck, Star, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { baht, type Product } from "@/lib/data";
 import { CategoryIcon } from "@/components/icons";
@@ -215,10 +215,10 @@ export function RecommendedProductsCarousel({ products }: { products: Product[] 
 function FeaturedProductTile({ product }: { product: Product }) {
   return (
     <article className="group flex min-h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl">
-      <Link href={`/products/${product.id}`} className="relative grid aspect-[4/3] place-items-center overflow-hidden bg-slate-100">
+      <Link href={`/products/${product.id}`} className="relative grid aspect-square place-items-center overflow-hidden bg-slate-100 p-3">
         {product.image ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={product.image} alt={product.name} className="h-full w-full object-cover transition group-hover:scale-105" />
+          <img src={product.image} alt={product.name} className="transition group-hover:scale-105" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
         ) : (
           <CategoryIcon name={product.glyph} className="h-20 w-20 text-slate-900/15" />
         )}
@@ -228,6 +228,12 @@ function FeaturedProductTile({ product }: { product: Product }) {
         <Link href={`/products/${product.id}`} className="block">
           <span className="mono text-[11px] uppercase tracking-wider text-blue-700">{product.catName ?? product.catEn}</span>
           <h3 className="mt-1 line-clamp-2 text-[15px] font-medium leading-snug text-slate-950 transition group-hover:text-blue-700">{product.name}</h3>
+          {product.warranty ? (
+            <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              {product.warranty}
+            </p>
+          ) : null}
         </Link>
         <div className="mono mt-auto pt-4 text-lg font-semibold text-slate-950">{baht(product.price)}</div>
       </div>
@@ -388,7 +394,7 @@ function ProductThumb({ product }: { product: Product }) {
     <span className="grid h-16 w-16 place-items-center overflow-hidden rounded-lg bg-slate-100">
       {product.image ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+        <img src={product.image} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
       ) : (
         <CategoryIcon name={product.glyph} className="h-7 w-7 text-slate-400" />
       )}

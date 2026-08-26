@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, ShoppingCart } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ShieldCheck, ShoppingCart } from "lucide-react";
 import { baht, type Product } from "@/lib/data";
 import { CategoryIcon } from "@/components/icons";
 import { useCart } from "@/components/app-context";
@@ -12,7 +12,6 @@ import { AdminFavoriteButton } from "@/components/admin-featured";
 export function ProductDetailClient({ product, related }: { product: Product; related: Product[] }) {
   const { addItem } = useCart();
   const note = product.notes?.trim();
-  const showSpec = product.spec && product.spec.trim() !== note;
 
   return (
     <main className="bg-slate-50">
@@ -32,11 +31,16 @@ export function ProductDetailClient({ product, related }: { product: Product; re
           <div>
             <div className="mono text-xs uppercase tracking-[.18em] text-blue-700">{product.catName ?? product.catEn ?? "NYIT Product"}</div>
             <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-tight text-slate-950">{product.name}</h1>
-            {showSpec ? <p className="mt-4 leading-7 text-slate-600">{product.spec}</p> : null}
             {note ? (
               <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
                 <div className="text-sm font-semibold text-blue-700">{"\u0e42\u0e19\u0e49\u0e15\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32"}</div>
                 <p className="mt-1 leading-7 text-slate-700 whitespace-pre-line">{note}</p>
+              </div>
+            ) : null}
+            {product.warranty ? (
+              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                <ShieldCheck className="h-4 w-4" />
+                {product.warranty}
               </div>
             ) : null}
             {product.description ? <p className="mt-3 leading-7 text-slate-600">{product.description}</p> : null}

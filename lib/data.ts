@@ -23,6 +23,7 @@ export type Product = {
   badge?: "sale" | "hot" | "new" | "";
   spec: string;
   notes?: string; // internal/admin note surfaced on the product detail page
+  warranty?: string; // warranty pulled from the selected in-stock serial/unit
   description?: string; // AI-generated or manually entered product detail
   specs?: [string, string][]; // structured spec sheet [[key, value], ...]
   glyph: string;

@@ -378,12 +378,18 @@ export function BuilderClient({ buildParts }: { buildParts: Record<string, Produ
                       isSelected ? "border-blue-500 ring-4 ring-blue-100" : "border-slate-200"
                     }`}
                   >
-                    <div className="grid aspect-[4/3] place-items-center overflow-hidden rounded-2xl bg-white">
+                    <div className="grid aspect-square place-items-center overflow-hidden rounded-2xl bg-white">
                       <ProductThumb product={part} size="card" />
                     </div>
                     <div className="mt-5 flex flex-1 flex-col">
                       <h3 className="line-clamp-3 min-h-[72px] text-base font-semibold leading-6 text-slate-800">{part.name}</h3>
-                      <p className="mt-2 line-clamp-1 text-sm text-slate-500">{part.brand || part.spec}</p>
+                      {part.brand ? <p className="mt-2 line-clamp-1 text-sm text-slate-500">{part.brand}</p> : null}
+                      {part.warranty ? (
+                        <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          {part.warranty}
+                        </p>
+                      ) : null}
                       <div className="mt-auto flex items-end justify-between gap-3 pt-6">
                         <div className="mono text-xl font-semibold text-slate-950">{baht(part.price)}</div>
                         <button
@@ -414,7 +420,7 @@ export function BuilderClient({ buildParts }: { buildParts: Record<string, Produ
 function ProductThumb({ product, size = "md" }: { product: Product; size?: "sm" | "md" | "card" }) {
   if (size === "card") {
     return product.image ? (
-      <img src={product.image} alt={product.name} className="h-full w-full object-contain transition duration-300 group-hover:scale-105" />
+      <img src={product.image} alt={product.name} className="transition duration-300 group-hover:scale-105" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
     ) : (
       <CategoryIcon name={product.glyph} className="h-20 w-20 text-slate-900/20" />
     );
@@ -428,7 +434,7 @@ function ProductThumb({ product, size = "md" }: { product: Product; size?: "sm" 
   return (
     <span className={`relative grid shrink-0 place-items-center overflow-hidden bg-white text-slate-500 ${sizeClass}`}>
       {product.image ? (
-        <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+        <img src={product.image} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
       ) : (
         <CategoryIcon name={product.glyph} className={size === "sm" ? "h-5 w-5" : "h-6 w-6"} />
       )}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingCart } from "lucide-react";
+import { ShieldCheck, ShoppingCart } from "lucide-react";
 import { baht, type Product } from "@/lib/data";
 import { CategoryIcon } from "@/components/icons";
 import { useCart } from "@/components/app-context";
@@ -18,7 +18,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <article className="group flex min-h-full flex-col overflow-hidden rounded-[18px] border border-slate-200 bg-white transition hover:-translate-y-1.5 hover:border-slate-300 hover:shadow-2xl">
-      <Link href={`/products/${product.id}`} className="relative grid aspect-[4/3] place-items-center overflow-hidden bg-slate-100">
+      <Link href={`/products/${product.id}`} className="relative grid aspect-square place-items-center overflow-hidden bg-slate-100 p-3">
         <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgba(15,23,42,.035)_0_11px,transparent_11px_22px)]" />
         {product.badge ? (
           <span className="mono absolute left-3 top-3 rounded-md bg-slate-950 px-2.5 py-1 text-[11px] font-semibold text-white">
@@ -31,7 +31,8 @@ export function ProductCard({ product }: { product: Product }) {
           <img
             src={product.image}
             alt={product.name}
-            className="relative h-full w-full object-cover transition group-hover:scale-105"
+            className="relative transition group-hover:scale-105"
+            style={{ width: "100%", height: "100%", objectFit: "contain" }}
           />
         ) : (
           <CategoryIcon name={product.glyph} className="h-20 w-20 text-slate-900/15 transition group-hover:scale-110" />
@@ -44,7 +45,12 @@ export function ProductCard({ product }: { product: Product }) {
         <Link href={`/products/${product.id}`} className="block">
           <span className="mono text-[11px] uppercase tracking-wider text-blue-700">{product.catName}</span>
           <h3 className="mt-1 text-[15.5px] font-medium leading-snug text-slate-950 transition group-hover:text-blue-700">{product.name}</h3>
-          <p className="mt-1 text-sm text-slate-500">{product.spec}</p>
+          {product.warranty ? (
+            <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              {product.warranty}
+            </p>
+          ) : null}
         </Link>
         <div className="mt-auto flex items-end justify-between gap-3 pt-4">
           <div className="mono text-lg font-semibold text-slate-950">
