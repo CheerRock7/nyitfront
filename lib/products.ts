@@ -100,20 +100,26 @@ async function getBundleProducts(bundleId?: string): Promise<Product[]> {
             'set' AS cat,
             'สินค้าแบบชุด' AS cat_name,
             'NYIT' AS brand,
-            ROUND(COALESCE(SUM(s.price), 0) * (1 - COALESCE(b.discount_pct, 0) / 100), 2)::text AS price,
+            -- Same rule as the POS: minus percent, then minus flat baht per set
+            -- (never below 0), then plus the assembly fee.
+            (GREATEST(ROUND(COALESCE(SUM(s.price), 0) * (1 - COALESCE(b.discount_pct, 0) / 100), 2)
+                      - COALESCE(b.discount_thb, 0), 0)
+             + COALESCE(b.assembly_fee, 0))::text AS price,
             (COUNT(p.id)::text || ' รายการในชุด') AS model,
-            STRING_AGG(p.name, ' + ' ORDER BY p.id) AS notes,
+            -- Parts in PC-build order (same list as the POS: nyit-computer_managing/server/src/lib/buildOrder.ts).
+            STRING_AGG(p.name, ' + ' ORDER BY COALESCE(ARRAY_POSITION(ARRAY['cpu','cpu-cooler','mb','ram','ssd','gpu','psu','case','monitor']::text[], bc.slug), 10), p.name) AS notes,
             NULL::text AS serial_note,
             NULL::integer AS serial_warranty_months,
             NULL::text AS serial_warranty_text,
             NULL::text AS description,
             NULL::jsonb AS specs,
-            (ARRAY_AGG(s.image_url ORDER BY p.id)
+            (ARRAY_AGG(s.image_url ORDER BY COALESCE(ARRAY_POSITION(ARRAY['cpu','cpu-cooler','mb','ram','ssd','gpu','psu','case','monitor']::text[], bc.slug), 10), p.name)
               FILTER (WHERE s.image_url IS NOT NULL))[1] AS image_url,
-            ARRAY_REMOVE(ARRAY_AGG(s.image_url ORDER BY p.id), NULL) AS image_urls
+            ARRAY_REMOVE(ARRAY_AGG(s.image_url ORDER BY COALESCE(ARRAY_POSITION(ARRAY['cpu','cpu-cooler','mb','ram','ssd','gpu','psu','case','monitor']::text[], bc.slug), 10), p.name), NULL) AS image_urls
        FROM bundles b
        LEFT JOIN bundle_items bi ON bi.bundle_id = b.id
        LEFT JOIN products p ON p.id = bi.product_id
+       LEFT JOIN categories bc ON bc.id = p.category_id
        LEFT JOIN LATERAL (
          SELECT MIN(ps.price) AS price,
                 (ARRAY_AGG(ps.image_url ORDER BY ps.price, ps.id)
@@ -123,7 +129,7 @@ async function getBundleProducts(bundleId?: string): Promise<Product[]> {
           GROUP BY ps.product_id
        ) s ON true
       WHERE ($1::bigint IS NULL OR b.id = $1::bigint)
-      GROUP BY b.id, b.name, b.discount_pct
+      GROUP BY b.id, b.name, b.discount_pct, b.discount_thb, b.assembly_fee
       ORDER BY b.id`,
     [bundleId ?? null],
   );
