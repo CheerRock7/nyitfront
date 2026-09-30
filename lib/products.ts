@@ -106,20 +106,19 @@ async function getBundleProducts(bundleId?: string): Promise<Product[]> {
                       - COALESCE(b.discount_thb, 0), 0)
              + COALESCE(b.assembly_fee, 0))::text AS price,
             (COUNT(p.id)::text || ' รายการในชุด') AS model,
-            -- Parts in PC-build order (same list as the POS: nyit-computer_managing/server/src/lib/buildOrder.ts).
-            STRING_AGG(p.name, ' + ' ORDER BY COALESCE(ARRAY_POSITION(ARRAY['cpu','cpu-cooler','mb','ram','ssd','gpu','psu','case','monitor']::text[], bc.slug), 10), p.name) AS notes,
+            -- Parts in the order the shop arranged them in the POS (bundle_items.sort).
+            STRING_AGG(p.name, ' + ' ORDER BY bi.sort, p.name) AS notes,
             NULL::text AS serial_note,
             NULL::integer AS serial_warranty_months,
             NULL::text AS serial_warranty_text,
             NULL::text AS description,
             NULL::jsonb AS specs,
-            (ARRAY_AGG(s.image_url ORDER BY COALESCE(ARRAY_POSITION(ARRAY['cpu','cpu-cooler','mb','ram','ssd','gpu','psu','case','monitor']::text[], bc.slug), 10), p.name)
+            (ARRAY_AGG(s.image_url ORDER BY bi.sort, p.name)
               FILTER (WHERE s.image_url IS NOT NULL))[1] AS image_url,
-            ARRAY_REMOVE(ARRAY_AGG(s.image_url ORDER BY COALESCE(ARRAY_POSITION(ARRAY['cpu','cpu-cooler','mb','ram','ssd','gpu','psu','case','monitor']::text[], bc.slug), 10), p.name), NULL) AS image_urls
+            ARRAY_REMOVE(ARRAY_AGG(s.image_url ORDER BY bi.sort, p.name), NULL) AS image_urls
        FROM bundles b
        LEFT JOIN bundle_items bi ON bi.bundle_id = b.id
        LEFT JOIN products p ON p.id = bi.product_id
-       LEFT JOIN categories bc ON bc.id = p.category_id
        LEFT JOIN LATERAL (
          SELECT MIN(ps.price) AS price,
                 (ARRAY_AGG(ps.image_url ORDER BY ps.price, ps.id)
