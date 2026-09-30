@@ -10,9 +10,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   if (!product) notFound();
 
-  const related = products
-    .filter((item) => item.id !== product.id && item.cat === product.cat)
-    .slice(0, 4);
+  // Other units of this same product first, then the rest of the category.
+  const others = products.filter((item) => item.id !== product.id);
+  const siblings = product.productId ? others.filter((item) => item.productId === product.productId) : [];
+  const related = [...siblings, ...others.filter((item) => item.cat === product.cat && !siblings.includes(item))].slice(0, 4);
 
   return <ProductDetailClient product={product} related={related} />;
 }

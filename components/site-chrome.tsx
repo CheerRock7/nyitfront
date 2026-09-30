@@ -51,6 +51,9 @@ const T = {
   register: "\u0e2a\u0e21\u0e31\u0e04\u0e23\u0e2a\u0e21\u0e32\u0e0a\u0e34\u0e01",
 } as const;
 
+// A listed unit is one physical item, so it can only be in the cart once.
+const maxQuantity = (id: string, quantity: number) => (id.startsWith("unit-") ? Math.min(1, quantity) : quantity);
+
 const nav = [
   { href: "/", label: T.home },
   { href: "/products", label: T.products },
@@ -193,14 +196,14 @@ export function SiteChrome({ children, categories }: { children: ReactNode; cate
         return;
       }
       setCartProducts((current) => ({ ...current, [product.id]: product }));
-      setCart((current) => ({ ...current, [product.id]: (current[product.id] || 0) + quantity }));
+      setCart((current) => ({ ...current, [product.id]: maxQuantity(product.id, (current[product.id] || 0) + quantity) }));
       setDrawerOpen(true);
     },
     setQuantity(id, quantity) {
       setCart((current) => {
         const next = { ...current };
         if (quantity <= 0) delete next[id];
-        else next[id] = quantity;
+        else next[id] = maxQuantity(id, quantity);
         return next;
       });
     },
@@ -586,9 +589,9 @@ function CartDrawer({ open, onClose, onRequireLogin }: { open: boolean; onClose:
                   <div className="text-sm font-medium leading-snug">{item.name}</div>
                   <div className="mono mt-1 text-xs text-slate-500">{baht(item.price)}</div>
                   <div className="mt-3 inline-flex rounded-lg border border-slate-200">
-                    <button className="h-8 w-8" onClick={() => setQuantity(item.id, item.quantity - 1)}>?</button>
+                    <button className="h-8 w-8" onClick={() => setQuantity(item.id, item.quantity - 1)}>−</button>
                     <span className="mono grid h-8 w-8 place-items-center text-sm">{item.quantity}</span>
-                    <button className="h-8 w-8" onClick={() => setQuantity(item.id, item.quantity + 1)}>+</button>
+                    <button className="h-8 w-8 disabled:opacity-30" disabled={item.quantity >= maxQuantity(item.id, Infinity)} onClick={() => setQuantity(item.id, item.quantity + 1)}>+</button>
                   </div>
                 </div>
                 <div className="mono text-right text-sm font-semibold">{baht(item.price * item.quantity)}</div>

@@ -20,6 +20,8 @@ type CategoryRow = { id: string; name: string; slug: string; sort: number };
 
 type ProductRow = {
   id: string;
+  /** Parent catalog product id (units only). */
+  product_id?: string | null;
   name: string;
   cat: string | null;
   cat_name: string | null;
@@ -48,9 +50,10 @@ function warrantyLabel(text: string | null, months: number | null): string | und
 function toProduct(row: ProductRow): Product {
   const slug = row.cat ?? "";
   const meta = categoryMeta[slug];
-  const images = [...new Set([...(row.image_urls ?? []), row.image_url].map((image) => imageUrl(image)).filter(Boolean))] as string[];
+  const images = [...new Set([row.image_url, ...(row.image_urls ?? [])].map((image) => imageUrl(image)).filter(Boolean))] as string[];
   return {
     id: String(row.id),
+    productId: row.product_id ? String(row.product_id) : undefined,
     name: row.name,
     cat: slug,
     catName: row.cat_name ?? undefined,
@@ -135,98 +138,45 @@ async function getBundleProducts(bundleId?: string): Promise<Product[]> {
   return rows.map(toProduct);
 }
 
+// Every physical unit in stock is its own storefront item (units of the same
+// product can differ in price, photos, warranty and condition). Id = "unit-<serial id>".
+const UNIT_SELECT = `
+  SELECT ('unit-' || ps.id) AS id, p.id::text AS product_id, p.name, c.slug AS cat, c.name AS cat_name,
+         p.brand, p.model, p.notes, NULLIF(ps.note, '') AS serial_note,
+         ps.warranty_months AS serial_warranty_months, NULLIF(ps.warranty_text, '') AS serial_warranty_text,
+         p.description, p.specs, ps.price, ps.image_url,
+         ARRAY(
+           SELECT img
+             FROM jsonb_array_elements_text(
+               CASE WHEN jsonb_typeof(ps.images) = 'array' THEN ps.images ELSE '[]'::jsonb END
+             ) AS img
+            WHERE img <> ''
+         ) AS image_urls
+    FROM product_serials ps
+    JOIN products p ON p.id = ps.product_id
+    LEFT JOIN categories c ON c.id = p.category_id
+   WHERE ps.status = 'in_stock' AND p.status = 'active'`;
+
 export async function getProducts(): Promise<Product[]> {
-  // Price, image and stock live per physical unit in `product_serials` (the
-  // stocking system tracks each serial separately). For the storefront we show
-  // the cheapest IN-STOCK unit's price, an image from any in-stock unit, and
-  // hide products with no in-stock units. `products` itself no longer carries
-  // price/image_url.
-  const rows = await query<ProductRow>(
-    `SELECT p.id, p.name, c.slug AS cat, c.name AS cat_name,
-            p.brand, p.model, p.notes, s.serial_note, s.serial_warranty_months, s.serial_warranty_text, p.description, p.specs, s.price, s.image_url, s.image_urls
-       FROM products p
-       LEFT JOIN categories c ON c.id = p.category_id
-       JOIN LATERAL (
-         SELECT MIN(ps.price) AS price,
-                (ARRAY_AGG(NULLIF(ps.note, '') ORDER BY ps.price, ps.id)
-                   FILTER (WHERE ps.note IS NOT NULL AND ps.note <> ''))[1] AS serial_note,
-                (ARRAY_AGG(ps.warranty_months ORDER BY ps.price, ps.id))[1] AS serial_warranty_months,
-                (ARRAY_AGG(NULLIF(ps.warranty_text, '') ORDER BY ps.price, ps.id))[1] AS serial_warranty_text,
-                (ARRAY_AGG(ps.image_url ORDER BY ps.price, ps.id)
-                   FILTER (WHERE ps.image_url IS NOT NULL))[1] AS image_url,
-                ARRAY(
-                  SELECT gallery.image
-                    FROM (
-                      SELECT ps2.image_url AS image, ps2.price, ps2.id AS serial_id, 0 AS image_order
-                        FROM product_serials ps2
-                       WHERE ps2.product_id = p.id AND ps2.status = 'in_stock' AND ps2.image_url IS NOT NULL
-                      UNION ALL
-                      SELECT img.image, ps2.price, ps2.id AS serial_id, 1 AS image_order
-                        FROM product_serials ps2
-                        CROSS JOIN LATERAL jsonb_array_elements_text(
-                          CASE WHEN jsonb_typeof(ps2.images) = 'array' THEN ps2.images ELSE '[]'::jsonb END
-                        ) AS img(image)
-                       WHERE ps2.product_id = p.id AND ps2.status = 'in_stock'
-                    ) gallery
-                   WHERE gallery.image IS NOT NULL AND gallery.image <> ''
-                   ORDER BY gallery.price, gallery.serial_id, gallery.image_order
-                ) AS image_urls
-           FROM product_serials ps
-          WHERE ps.product_id = p.id AND ps.status = 'in_stock'
-          GROUP BY ps.product_id
-       ) s ON true
-      WHERE p.status = 'active'
-      ORDER BY p.id`,
-  );
-  const products = rows.map(toProduct);
+  const rows = await query<ProductRow>(`${UNIT_SELECT} ORDER BY p.id, ps.price, ps.id`);
+  const units = rows.map(toProduct);
   const bundles = await getBundleProducts();
-  return [...products, ...bundles];
+  return [...units, ...bundles];
 }
 
+// "unit-<id>" → that unit; "bundle-<id>" → that bundle; a bare product id (old
+// links, carts and featured picks from before units were listed) → that
+// product's cheapest in-stock unit.
 export async function getProductById(id: string): Promise<Product | null> {
   if (id.startsWith("bundle-")) {
     const bundles = await getBundleProducts(id.replace("bundle-", ""));
     return bundles[0] ?? null;
   }
-
-  const rows = await query<ProductRow>(
-    `SELECT p.id, p.name, c.slug AS cat, c.name AS cat_name,
-            p.brand, p.model, p.notes, s.serial_note, s.serial_warranty_months, s.serial_warranty_text, p.description, p.specs, s.price, s.image_url, s.image_urls
-       FROM products p
-       LEFT JOIN categories c ON c.id = p.category_id
-       JOIN LATERAL (
-         SELECT MIN(ps.price) AS price,
-                (ARRAY_AGG(NULLIF(ps.note, '') ORDER BY ps.price, ps.id)
-                   FILTER (WHERE ps.note IS NOT NULL AND ps.note <> ''))[1] AS serial_note,
-                (ARRAY_AGG(ps.warranty_months ORDER BY ps.price, ps.id))[1] AS serial_warranty_months,
-                (ARRAY_AGG(NULLIF(ps.warranty_text, '') ORDER BY ps.price, ps.id))[1] AS serial_warranty_text,
-                (ARRAY_AGG(ps.image_url ORDER BY ps.price, ps.id)
-                   FILTER (WHERE ps.image_url IS NOT NULL))[1] AS image_url,
-                ARRAY(
-                  SELECT gallery.image
-                    FROM (
-                      SELECT ps2.image_url AS image, ps2.price, ps2.id AS serial_id, 0 AS image_order
-                        FROM product_serials ps2
-                       WHERE ps2.product_id = p.id AND ps2.status = 'in_stock' AND ps2.image_url IS NOT NULL
-                      UNION ALL
-                      SELECT img.image, ps2.price, ps2.id AS serial_id, 1 AS image_order
-                        FROM product_serials ps2
-                        CROSS JOIN LATERAL jsonb_array_elements_text(
-                          CASE WHEN jsonb_typeof(ps2.images) = 'array' THEN ps2.images ELSE '[]'::jsonb END
-                        ) AS img(image)
-                       WHERE ps2.product_id = p.id AND ps2.status = 'in_stock'
-                    ) gallery
-                   WHERE gallery.image IS NOT NULL AND gallery.image <> ''
-                   ORDER BY gallery.price, gallery.serial_id, gallery.image_order
-                ) AS image_urls
-           FROM product_serials ps
-          WHERE ps.product_id = p.id AND ps.status = 'in_stock'
-          GROUP BY ps.product_id
-       ) s ON true
-      WHERE p.status = 'active' AND p.id = $1
-      LIMIT 1`,
-    [id],
-  );
+  const unitId = id.startsWith("unit-") ? id.slice(5) : null;
+  if (!/^\d+$/.test(unitId ?? id)) return null;
+  const rows = unitId
+    ? await query<ProductRow>(`${UNIT_SELECT} AND ps.id = $1`, [unitId])
+    : await query<ProductRow>(`${UNIT_SELECT} AND p.id = $1 ORDER BY ps.price, ps.id LIMIT 1`, [id]);
   return rows[0] ? toProduct(rows[0]) : null;
 }
 

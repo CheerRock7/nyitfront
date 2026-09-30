@@ -127,6 +127,10 @@ export function RecommendedProductsCarousel({ products }: { products: Product[] 
 
   const list = useMemo(() => {
     const productMap = new Map(products.map((product) => [product.id, product]));
+    // Picks saved before each unit was listed hold a bare product id → its first unit.
+    for (const product of products) {
+      if (product.productId && !productMap.has(product.productId)) productMap.set(product.productId, product);
+    }
     const selected = ids.map((id) => productMap.get(id)).filter(Boolean) as Product[];
     return selected.length ? selected : products.slice(0, 8);
   }, [ids, products]);

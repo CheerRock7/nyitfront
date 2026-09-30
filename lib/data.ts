@@ -12,7 +12,8 @@ export type Category = {
 };
 
 export type Product = {
-  id: string;
+  id: string; // "unit-<serial id>" for a single in-stock unit, "bundle-<id>" for a set
+  productId?: string; // parent catalog product (units only)
   name: string;
   cat: string; // category slug
   catName?: string; // Thai category name (denormalized for display)

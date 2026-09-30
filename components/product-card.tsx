@@ -45,6 +45,9 @@ export function ProductCard({ product }: { product: Product }) {
         <Link href={`/products/${product.id}`} className="block">
           <span className="mono text-[11px] uppercase tracking-wider text-blue-700">{product.catName}</span>
           <h3 className="mt-1 text-[15.5px] font-medium leading-snug text-slate-950 transition group-hover:text-blue-700">{product.name}</h3>
+          {product.productId && product.notes ? (
+            <p className="mt-1 line-clamp-2 text-xs text-slate-500">{product.notes}</p>
+          ) : null}
           {product.warranty ? (
             <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
               <ShieldCheck className="h-3.5 w-3.5" />
