@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, ShieldCheck, ShoppingCart } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, PackageCheck, ShieldCheck, ShoppingCart } from "lucide-react";
 import { baht, type Product } from "@/lib/data";
 import { CategoryIcon } from "@/components/icons";
 import { useCart } from "@/components/app-context";
@@ -62,6 +62,12 @@ export function ProductDetailClient({ product, related }: { product: Product; re
             <div className="mt-6 rounded-2xl bg-slate-50 p-5">
               <div className="text-sm text-slate-500">ราคา</div>
               <div className="mono mt-1 text-4xl font-semibold text-slate-950">{baht(product.price)}</div>
+              {product.stockCount !== undefined ? (
+                <div className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+                  <PackageCheck className="h-4 w-4" />
+                  มีในสต็อก {product.stockCount} ชิ้น
+                </div>
+              ) : null}
             </div>
           </div>
 

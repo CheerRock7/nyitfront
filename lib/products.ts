@@ -36,6 +36,7 @@ type ProductRow = {
   specs: [string, string][] | null;
   image_url: string | null;
   image_urls: string[] | null;
+  stock_count?: number | null;
 };
 
 type BundleRow = ProductRow;
@@ -68,6 +69,7 @@ function toProduct(row: ProductRow): Product {
     glyph: meta?.icon ?? slug ?? "set",
     image: images[0],
     images: images.length ? images : undefined,
+    stockCount: row.stock_count == null ? undefined : Number(row.stock_count),
   };
 }
 
@@ -145,6 +147,7 @@ const UNIT_SELECT = `
          p.brand, p.model, p.notes, NULLIF(ps.note, '') AS serial_note,
          ps.warranty_months AS serial_warranty_months, NULLIF(ps.warranty_text, '') AS serial_warranty_text,
          p.description, p.specs, ps.price, ps.image_url,
+         COUNT(*) OVER (PARTITION BY p.id)::int AS stock_count,
          ARRAY(
            SELECT img
              FROM jsonb_array_elements_text(

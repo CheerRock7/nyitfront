@@ -31,6 +31,7 @@ export type Product = {
   image?: string; // absolute image URL when available
   images?: string[]; // all product gallery images when available
   rating?: number;
+  stockCount?: number; // number of in-stock physical units for this product
 };
 
 export type BuildSlot = {

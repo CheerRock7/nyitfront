@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ShieldCheck, ShoppingCart } from "lucide-react";
+import { PackageCheck, ShieldCheck, ShoppingCart } from "lucide-react";
 import { baht, type Product } from "@/lib/data";
 import { CategoryIcon } from "@/components/icons";
 import { useCart } from "@/components/app-context";
@@ -37,9 +37,6 @@ export function ProductCard({ product }: { product: Product }) {
         ) : (
           <CategoryIcon name={product.glyph} className="h-20 w-20 text-slate-900/15 transition group-hover:scale-110" />
         )}
-        <span className="mono absolute bottom-4 rounded-full border border-slate-200 bg-white/75 px-3 py-1 text-[11px] tracking-wide text-slate-400">
-          {product.brand}{product.catEn ? ` · ${product.catEn}` : ""}
-        </span>
       </Link>
       <div className="flex flex-1 flex-col p-4">
         <Link href={`/products/${product.id}`} className="block">
@@ -52,6 +49,12 @@ export function ProductCard({ product }: { product: Product }) {
             <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
               <ShieldCheck className="h-3.5 w-3.5" />
               {product.warranty}
+            </p>
+          ) : null}
+          {product.stockCount !== undefined ? (
+            <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+              <PackageCheck className="h-3.5 w-3.5" />
+              มีในสต็อก {product.stockCount} ชิ้น
             </p>
           ) : null}
         </Link>
