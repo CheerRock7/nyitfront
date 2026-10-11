@@ -118,9 +118,15 @@ async function getBundleProducts(bundleId?: string): Promise<Product[]> {
             NULL::text AS serial_warranty_text,
             NULL::text AS description,
             NULL::jsonb AS specs,
-            (ARRAY_AGG(s.image_url ORDER BY bi.sort, p.name)
-              FILTER (WHERE s.image_url IS NOT NULL))[1] AS image_url,
-            ARRAY_REMOVE(ARRAY_AGG(s.image_url ORDER BY bi.sort, p.name), NULL) AS image_urls
+            -- The bundle's own cover + gallery (set in the POS) come first;
+            -- part photos are only a fallback for bundles with no photos.
+            COALESCE(b.image_url,
+                     (ARRAY_AGG(s.image_url ORDER BY bi.sort, p.name)
+                        FILTER (WHERE s.image_url IS NOT NULL))[1]) AS image_url,
+            CASE WHEN jsonb_typeof(b.images) = 'array' AND jsonb_array_length(b.images) > 0
+                 THEN ARRAY(SELECT jsonb_array_elements_text(b.images))
+                 ELSE ARRAY_REMOVE(ARRAY_AGG(s.image_url ORDER BY bi.sort, p.name), NULL)
+            END AS image_urls
        FROM bundles b
        LEFT JOIN bundle_items bi ON bi.bundle_id = b.id
        LEFT JOIN products p ON p.id = bi.product_id
@@ -133,7 +139,7 @@ async function getBundleProducts(bundleId?: string): Promise<Product[]> {
           GROUP BY ps.product_id
        ) s ON true
       WHERE ($1::bigint IS NULL OR b.id = $1::bigint)
-      GROUP BY b.id, b.name, b.discount_pct, b.discount_thb, b.assembly_fee
+      GROUP BY b.id, b.name, b.discount_pct, b.discount_thb, b.assembly_fee, b.image_url, b.images
       ORDER BY b.id`,
     [bundleId ?? null],
   );
